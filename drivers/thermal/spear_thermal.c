@@ -143,11 +143,11 @@ static int spear_thermal_probe(struct platform_device *pdev)
 		goto put_clk;
 	}
 
-	stdev->flags = pdata->thermal_flags;
+	stdev->flags = val;
 	writel_relaxed(stdev->flags, stdev->thermal_base);
 
 	spear_thermal = thermal_zone_device_register("spear_thermal", 0, 0,
-				stdev, &ops, 0, 0);
+				stdev, &ops, 0, 0, 0, 0);
 	if (IS_ERR(spear_thermal)) {
 		dev_err(&pdev->dev, "thermal zone device is NULL\n");
 		ret = PTR_ERR(spear_thermal);

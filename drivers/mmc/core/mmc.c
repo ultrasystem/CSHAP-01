@@ -292,13 +292,7 @@ static int mmc_read_ext_csd(struct mmc_card *card, u8 *ext_csd)
 	}
 
 	card->ext_csd.rev = ext_csd[EXT_CSD_REV];
-	/* modify by cym 20140416 */
-#if 0
 	if (card->ext_csd.rev > 6) {
-#else
-	if ((card->ext_csd.rev > 6) && (7 != card->ext_csd.rev)) {
-#endif
-	/* end modify */
 		pr_err("%s: unrecognised EXT_CSD revision %d\n",
 			mmc_hostname(card->host), card->ext_csd.rev);
 		err = -EINVAL;

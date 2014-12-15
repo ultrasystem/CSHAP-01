@@ -316,12 +316,12 @@ EXPORT_SYMBOL(sg_alloc_table);
  * @sgt:	The sg table header to use
  * @pages:	Pointer to an array of page pointers
  * @n_pages:	Number of pages in the pages array
- * @offset:     Offset from a start of the first page to a start of a buffer
+ * @offset:     Offset from start of the first page to the start of a buffer
  * @size:       Number of valid bytes in the buffer (after offset)
  * @gfp_mask:	GFP allocation mask
  *
  *  Description:
- *    Allocate and initialize an sg table from a list of pages. Continuous
+ *    Allocate and initialize an sg table from a list of pages. Contiguous
  *    ranges of the pages are squashed into a single scatterlist node. A user
  *    may provide an offset at a start and a size of valid data in a buffer
  *    specified by the page array. The returned sg table is released by
@@ -329,7 +329,7 @@ EXPORT_SYMBOL(sg_alloc_table);
  *
  * Returns:
  *   0 on success, negative error on failure
- **/
+ */
 int sg_alloc_table_from_pages(struct sg_table *sgt,
 	struct page **pages, unsigned int n_pages,
 	unsigned long offset, unsigned long size,
@@ -344,7 +344,7 @@ int sg_alloc_table_from_pages(struct sg_table *sgt,
 	/* compute number of contiguous chunks */
 	chunks = 1;
 	for (i = 1; i < n_pages; ++i)
-		if (pages[i] != pages[i - 1] + 1)
+		if (page_to_pfn(pages[i]) != page_to_pfn(pages[i - 1]) + 1)
 			++chunks;
 
 	ret = sg_alloc_table(sgt, chunks, gfp_mask);
@@ -357,9 +357,10 @@ int sg_alloc_table_from_pages(struct sg_table *sgt,
 		unsigned long chunk_size;
 		unsigned int j;
 
-		/* looking for the end of the current chunk */
+		/* look for the end of the current chunk */
 		for (j = cur_page + 1; j < n_pages; ++j)
-			if (pages[j] != pages[j - 1] + 1)
+			if (page_to_pfn(pages[j]) !=
+			    page_to_pfn(pages[j - 1]) + 1)
 				break;
 
 		chunk_size = ((j - cur_page) << PAGE_SHIFT) - offset;

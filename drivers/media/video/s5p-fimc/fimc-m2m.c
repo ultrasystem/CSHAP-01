@@ -784,6 +784,10 @@ static int fimc_m2m_release(struct file *file)
 
 	kfree(ctx->m2m_ctx->cap_q_ctx.q.name);
 	kfree(ctx->m2m_ctx->out_q_ctx.q.name);
+
+        if (mutex_lock_interruptible(&fimc->lock))
+                return -ERESTARTSYS;
+
 	v4l2_m2m_ctx_release(ctx->m2m_ctx);
 	fimc_ctrls_delete(ctx);
 	v4l2_fh_del(&ctx->fh);

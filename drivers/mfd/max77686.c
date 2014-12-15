@@ -27,7 +27,6 @@
 #include <linux/i2c.h>
 #include <linux/pm_runtime.h>
 #include <linux/module.h>
-#include <linux/mutex.h>
 #include <linux/mfd/core.h>
 #include <linux/mfd/max77686.h>
 #include <linux/mfd/max77686-private.h>
@@ -45,13 +44,50 @@ static struct regmap_config max77686_regmap_config = {
 	.val_bits = 8,
 };
 
+#ifdef CONFIG_OF
+static struct of_device_id __devinitdata max77686_pmic_dt_match[] = {
+	{.compatible = "maxim,max77686",        .data = 0},
+	{},
+};
+
+static struct max77686_platform_data *max77686_i2c_parse_dt_pdata(struct device
+								  *dev)
+{
+	struct max77686_platform_data *pd;
+
+	pd = devm_kzalloc(dev, sizeof(*pd), GFP_KERNEL);
+	if (!pd) {
+		dev_err(dev, "could not allocate memory for pdata\n");
+		return NULL;
+	}
+
+	dev->platform_data = pd;
+	return pd;
+}
+#else
+static struct max77686_platform_data *max77686_i2c_parse_dt_pdata(struct device
+								  *dev)
+{
+	return 0;
+}
+#endif
+
 static int max77686_i2c_probe(struct i2c_client *i2c,
 			      const struct i2c_device_id *id)
 {
-	struct max77686_dev *max77686;
+	struct max77686_dev *max77686 = NULL;
 	struct max77686_platform_data *pdata = i2c->dev.platform_data;
 	unsigned int data;
 	int ret = 0;
+
+	if (i2c->dev.of_node)
+		pdata = max77686_i2c_parse_dt_pdata(&i2c->dev);
+
+	if (!pdata) {
+		ret = -EIO;
+		dev_err(&i2c->dev, "No platform data found.\n");
+		goto err;
+	}
 
 	max77686 = kzalloc(sizeof(struct max77686_dev), GFP_KERNEL);
 	if (max77686 == NULL)
@@ -71,16 +107,9 @@ static int max77686_i2c_probe(struct i2c_client *i2c,
 	max77686->i2c = i2c;
 	max77686->type = id->driver_data;
 
-	if (!pdata) {
-		ret = -EIO;
-		goto err;
-	}
-
 	max77686->wakeup = pdata->wakeup;
 	max77686->irq_gpio = pdata->irq_gpio;
 	max77686->irq = i2c->irq;
-
-	mutex_init(&max77686->iolock);
 
 	if (regmap_read(max77686->regmap,
 			 MAX77686_REG_DEVICE_ID, &data) < 0) {
@@ -97,7 +126,7 @@ static int max77686_i2c_probe(struct i2c_client *i2c,
 	max77686_irq_init(max77686);
 
 	ret = mfd_add_devices(max77686->dev, -1, max77686_devs,
-			      ARRAY_SIZE(max77686_devs), NULL, 0);
+			      ARRAY_SIZE(max77686_devs), NULL, 0, NULL);
 
 	if (ret < 0)
 		goto err_mfd;
@@ -133,6 +162,7 @@ static struct i2c_driver max77686_i2c_driver = {
 	.driver = {
 		   .name = "max77686",
 		   .owner = THIS_MODULE,
+		   .of_match_table = of_match_ptr(max77686_pmic_dt_match),
 	},
 	.probe = max77686_i2c_probe,
 	.remove = max77686_i2c_remove,

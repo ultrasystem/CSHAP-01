@@ -182,6 +182,8 @@ enum regulator_type {
  * @vsel_mask: Mask for register bitfield used for selector
  * @enable_reg: Register for control when using regmap enable/disable ops
  * @enable_mask: Mask for control when using regmap enable/disable ops
+ *
+ * @enable_time: Time taken for initial enable of regulator (in uS).
  */
 struct regulator_desc {
 	const char *name;
@@ -203,6 +205,8 @@ struct regulator_desc {
 	unsigned int vsel_mask;
 	unsigned int enable_reg;
 	unsigned int enable_mask;
+
+	unsigned int enable_time;
 };
 
 /**
@@ -291,8 +295,6 @@ int rdev_get_id(struct regulator_dev *rdev);
 int regulator_mode_to_status(unsigned int);
 
 int regulator_list_voltage_linear(struct regulator_dev *rdev,
-				  unsigned int selector);
-int regulator_list_voltage_table(struct regulator_dev *rdev,
 				  unsigned int selector);
 int regulator_list_voltage_table(struct regulator_dev *rdev,
 				  unsigned int selector);
