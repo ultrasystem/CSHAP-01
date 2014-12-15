@@ -734,6 +734,10 @@ static int exynos_iommu_domain_init(struct iommu_domain *domain)
 	INIT_LIST_HEAD(&priv->clients);
 	iommu_set_fault_handler(domain, &exynos_iommu_fault_handler, NULL);
 
+	domain->geometry.aperture_start = 0;
+	domain->geometry.aperture_end   = ~0UL;
+	domain->geometry.force_aperture = true;
+
 	domain->priv = priv;
 	return 0;
 

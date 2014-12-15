@@ -27,27 +27,7 @@
 #include <media/v4l2-event.h>
 #include <media/v4l2-device.h>
 #include <media/v4l2-chip-ident.h>
-
-#define dbgarg(cmd, fmt, arg...) \
-		do {							\
-		    if (vfd->debug & V4L2_DEBUG_IOCTL_ARG) {		\
-			printk(KERN_DEBUG "%s: ",  vfd->name);		\
-			v4l_printk_ioctl(cmd);				\
-			printk(" " fmt,  ## arg);			\
-		    }							\
-		} while (0)
-
-#define dbgarg2(fmt, arg...) \
-		do {							\
-		    if (vfd->debug & V4L2_DEBUG_IOCTL_ARG)		\
-			printk(KERN_DEBUG "%s: " fmt, vfd->name, ## arg);\
-		} while (0)
-
-#define dbgarg3(fmt, arg...) \
-		do {							\
-		    if (vfd->debug & V4L2_DEBUG_IOCTL_ARG)		\
-			printk(KERN_CONT "%s: " fmt, vfd->name, ## arg);\
-		} while (0)
+#include <media/videobuf2-core.h>
 
 /* Zero out the end of the struct pointed to by p.  Everything after, but
  * not including, the specified field is cleared. */
@@ -2226,7 +2206,20 @@ video_usercopy(struct file *file, unsigned int cmd, unsigned long arg,
 
 		err = -EFAULT;
 		if (_IOC_DIR(cmd) & _IOC_WRITE) {
-			unsigned long n = cmd_input_size(cmd);
+			unsigned int n = _IOC_SIZE(cmd);
+
+			/*
+			 * In some cases, only a few fields are used as input,
+			 * i.e. when the app sets "index" and then the driver
+			 * fills in the rest of the structure for the thing
+			 * with that index.  We only need to copy up the first
+			 * non-input field.
+			 */
+			if (v4l2_is_known_ioctl(cmd)) {
+				u32 flags = v4l2_ioctls[_IOC_NR(cmd)].flags;
+				if (flags & INFO_FL_CLEAR_MASK)
+					n = (flags & INFO_FL_CLEAR_MASK) >> 16;
+			}
 
 			if (copy_from_user(parg, (void __user *)arg, n))
 				goto out;

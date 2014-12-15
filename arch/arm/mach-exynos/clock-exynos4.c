@@ -1051,7 +1051,7 @@ static struct clk *exynos4_clkset_mout_g2d0_list[] = {
 	[1] = &exynos4_clk_sclk_apll.clk,
 };
 
-static struct clksrc_sources exynos4_clkset_mout_g2d0 = {
+struct clksrc_sources exynos4_clkset_mout_g2d0 = {
 	.sources	= exynos4_clkset_mout_g2d0_list,
 	.nr_sources	= ARRAY_SIZE(exynos4_clkset_mout_g2d0_list),
 };
@@ -1064,12 +1064,12 @@ static struct clksrc_clk exynos4_clk_mout_g2d0 = {
 	.reg_src = { .reg = EXYNOS4_CLKSRC_DMC, .shift = 20, .size = 1 },
 };
 
-static struct clk *exynos4_clkset_mout_g2d1_list[] = {
+struct clk *exynos4_clkset_mout_g2d1_list[] = {
 	[0] = &exynos4_clk_mout_epll.clk,
 	[1] = &exynos4_clk_sclk_vpll.clk,
 };
 
-static struct clksrc_sources exynos4_clkset_mout_g2d1 = {
+struct clksrc_sources exynos4_clkset_mout_g2d1 = {
 	.sources	= exynos4_clkset_mout_g2d1_list,
 	.nr_sources	= ARRAY_SIZE(exynos4_clkset_mout_g2d1_list),
 };

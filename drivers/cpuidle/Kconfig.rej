@@ -1,0 +1,12 @@
+***************
+*** 18,20 ****
+  	bool
+  	depends on CPU_IDLE && NO_HZ
+  	default y
+--- 18,23 ----
+  	bool
+  	depends on CPU_IDLE && NO_HZ
+  	default y
++ 
++ config ARCH_NEEDS_CPU_IDLE_COUPLED
++ 	def_bool n

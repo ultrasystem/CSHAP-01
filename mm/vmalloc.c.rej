@@ -1,0 +1,160 @@
+***************
+*** 1280,1286 ****
+  struct vm_struct *vmlist;
+  
+  static void setup_vmalloc_vm(struct vm_struct *vm, struct vmap_area *va,
+- 			      unsigned long flags, void *caller)
+  {
+  	vm->flags = flags;
+  	vm->addr = (void *)va->va_start;
+--- 1288,1294 ----
+  struct vm_struct *vmlist;
+  
+  static void setup_vmalloc_vm(struct vm_struct *vm, struct vmap_area *va,
++ 			      unsigned long flags, const void *caller)
+  {
+  	vm->flags = flags;
+  	vm->addr = (void *)va->va_start;
+***************
+*** 1306,1312 ****
+  }
+  
+  static void insert_vmalloc_vm(struct vm_struct *vm, struct vmap_area *va,
+- 			      unsigned long flags, void *caller)
+  {
+  	setup_vmalloc_vm(vm, va, flags, caller);
+  	insert_vmalloc_vmlist(vm);
+--- 1314,1320 ----
+  }
+  
+  static void insert_vmalloc_vm(struct vm_struct *vm, struct vmap_area *va,
++ 			      unsigned long flags, const void *caller)
+  {
+  	setup_vmalloc_vm(vm, va, flags, caller);
+  	insert_vmalloc_vmlist(vm);
+***************
+*** 1314,1320 ****
+  
+  static struct vm_struct *__get_vm_area_node(unsigned long size,
+  		unsigned long align, unsigned long flags, unsigned long start,
+- 		unsigned long end, int node, gfp_t gfp_mask, void *caller)
+  {
+  	struct vmap_area *va;
+  	struct vm_struct *area;
+--- 1322,1328 ----
+  
+  static struct vm_struct *__get_vm_area_node(unsigned long size,
+  		unsigned long align, unsigned long flags, unsigned long start,
++ 		unsigned long end, int node, gfp_t gfp_mask, const void *caller)
+  {
+  	struct vmap_area *va;
+  	struct vm_struct *area;
+***************
+*** 1375,1381 ****
+  
+  struct vm_struct *__get_vm_area_caller(unsigned long size, unsigned long flags,
+  				       unsigned long start, unsigned long end,
+- 				       void *caller)
+  {
+  	return __get_vm_area_node(size, 1, flags, start, end, -1, GFP_KERNEL,
+  				  caller);
+--- 1383,1389 ----
+  
+  struct vm_struct *__get_vm_area_caller(unsigned long size, unsigned long flags,
+  				       unsigned long start, unsigned long end,
++ 				       const void *caller)
+  {
+  	return __get_vm_area_node(size, 1, flags, start, end, -1, GFP_KERNEL,
+  				  caller);
+***************
+*** 1397,1409 ****
+  }
+  
+  struct vm_struct *get_vm_area_caller(unsigned long size, unsigned long flags,
+- 				void *caller)
+  {
+  	return __get_vm_area_node(size, 1, flags, VMALLOC_START, VMALLOC_END,
+  						-1, GFP_KERNEL, caller);
+  }
+  
+- static struct vm_struct *find_vm_area(const void *addr)
+  {
+  	struct vmap_area *va;
+  
+--- 1405,1425 ----
+  }
+  
+  struct vm_struct *get_vm_area_caller(unsigned long size, unsigned long flags,
++ 				const void *caller)
+  {
+  	return __get_vm_area_node(size, 1, flags, VMALLOC_START, VMALLOC_END,
+  						-1, GFP_KERNEL, caller);
+  }
+  
++ /**
++  *	find_vm_area  -  find a continuous kernel virtual area
++  *	@addr:		base address
++  *
++  *	Search for the kernel VM area starting at @addr, and return it.
++  *	It is up to the caller to do all required locking to keep the returned
++  *	pointer valid.
++  */
++ struct vm_struct *find_vm_area(const void *addr)
+  {
+  	struct vmap_area *va;
+  
+***************
+*** 1568,1576 ****
+  
+  static void *__vmalloc_node(unsigned long size, unsigned long align,
+  			    gfp_t gfp_mask, pgprot_t prot,
+- 			    int node, void *caller);
+  static void *__vmalloc_area_node(struct vm_struct *area, gfp_t gfp_mask,
+- 				 pgprot_t prot, int node, void *caller)
+  {
+  	const int order = 0;
+  	struct page **pages;
+--- 1584,1592 ----
+  
+  static void *__vmalloc_node(unsigned long size, unsigned long align,
+  			    gfp_t gfp_mask, pgprot_t prot,
++ 			    int node, const void *caller);
+  static void *__vmalloc_area_node(struct vm_struct *area, gfp_t gfp_mask,
++ 				 pgprot_t prot, int node, const void *caller)
+  {
+  	const int order = 0;
+  	struct page **pages;
+***************
+*** 1643,1649 ****
+   */
+  void *__vmalloc_node_range(unsigned long size, unsigned long align,
+  			unsigned long start, unsigned long end, gfp_t gfp_mask,
+- 			pgprot_t prot, int node, void *caller)
+  {
+  	struct vm_struct *area;
+  	void *addr;
+--- 1659,1665 ----
+   */
+  void *__vmalloc_node_range(unsigned long size, unsigned long align,
+  			unsigned long start, unsigned long end, gfp_t gfp_mask,
++ 			pgprot_t prot, int node, const void *caller)
+  {
+  	struct vm_struct *area;
+  	void *addr;
+***************
+*** 1699,1705 ****
+   */
+  static void *__vmalloc_node(unsigned long size, unsigned long align,
+  			    gfp_t gfp_mask, pgprot_t prot,
+- 			    int node, void *caller)
+  {
+  	return __vmalloc_node_range(size, align, VMALLOC_START, VMALLOC_END,
+  				gfp_mask, prot, node, caller);
+--- 1715,1721 ----
+   */
+  static void *__vmalloc_node(unsigned long size, unsigned long align,
+  			    gfp_t gfp_mask, pgprot_t prot,
++ 			    int node, const void *caller)
+  {
+  	return __vmalloc_node_range(size, align, VMALLOC_START, VMALLOC_END,
+  				gfp_mask, prot, node, caller);

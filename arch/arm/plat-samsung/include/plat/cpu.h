@@ -146,6 +146,10 @@ IS_SAMSUNG_CPU(exynos5250, EXYNOS5250_SOC_ID, EXYNOS5_SOC_MASK)
 #define KHZ (1000)
 #endif
 
+#ifndef KHZ
+#define KHZ (1000)
+#endif
+
 #ifndef MHZ
 #define MHZ (KHZ*KHZ)
 #endif

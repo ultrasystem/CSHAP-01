@@ -1,0 +1,13 @@
+***************
+*** 150,153 ****
+  
+  source "drivers/vme/Kconfig"
+  
+  endmenu
+--- 152,157 ----
+  
+  source "drivers/vme/Kconfig"
+  
++ source "drivers/pwm/Kconfig"
++ 
+  endmenu

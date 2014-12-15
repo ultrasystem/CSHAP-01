@@ -318,7 +318,12 @@ static int fimc_m2m_querycap(struct file *file, void *fh,
 	strncpy(cap->driver, fimc->pdev->name, sizeof(cap->driver) - 1);
 	strncpy(cap->card, fimc->pdev->name, sizeof(cap->card) - 1);
 	cap->bus_info[0] = 0;
-	cap->capabilities = V4L2_CAP_STREAMING |
+	/*
+	 * This is only a mem-to-mem video device. The capture and output
+	 * device capability flags are left only for backward compatibility
+	 * and are scheduled for removal.
+	 */
+	cap->capabilities = V4L2_CAP_STREAMING | V4L2_CAP_VIDEO_M2M_MPLANE |
 		V4L2_CAP_VIDEO_CAPTURE_MPLANE | V4L2_CAP_VIDEO_OUTPUT_MPLANE;
 
 	return 0;
@@ -703,21 +708,25 @@ static int fimc_m2m_open(struct file *file)
 {
 	struct fimc_dev *fimc = video_drvdata(file);
 	struct fimc_ctx *ctx;
-	int ret;
+	int ret = -EBUSY;
 
 	dbg("pid: %d, state: 0x%lx, refcnt: %d",
 	    task_pid_nr(current), fimc->state, fimc->vid_cap.refcnt);
 
+	if (mutex_lock_interruptible(&fimc->lock))
+		return -ERESTARTSYS;
 	/*
 	 * Return if the corresponding video capture node
 	 * is already opened.
 	 */
 	if (fimc->vid_cap.refcnt > 0)
-		return -EBUSY;
+		goto unlock;
 
 	ctx = kzalloc(sizeof *ctx, GFP_KERNEL);
-	if (!ctx)
-		return -ENOMEM;
+	if (!ctx) {
+		ret = -ENOMEM;
+		goto unlock;
+	}
 	v4l2_fh_init(&ctx->fh, fimc->m2m.vfd);
 	ctx->fimc_dev = fimc;
 
@@ -750,6 +759,8 @@ static int fimc_m2m_open(struct file *file)
 
 	if (fimc->m2m.refcnt++ == 0)
 		set_bit(ST_M2M_RUN, &fimc->state);
+
+	mutex_unlock(&fimc->lock);
 	return 0;
 
 error_c:
@@ -758,6 +769,8 @@ error_fh:
 	v4l2_fh_del(&ctx->fh);
 	v4l2_fh_exit(&ctx->fh);
 	kfree(ctx);
+unlock:
+	mutex_unlock(&fimc->lock);
 	return ret;
 }
 
@@ -779,6 +792,8 @@ static int fimc_m2m_release(struct file *file)
 	if (--fimc->m2m.refcnt <= 0)
 		clear_bit(ST_M2M_RUN, &fimc->state);
 	kfree(ctx);
+
+	mutex_unlock(&fimc->lock);
 	return 0;
 }
 
@@ -786,16 +801,32 @@ static unsigned int fimc_m2m_poll(struct file *file,
 				  struct poll_table_struct *wait)
 {
 	struct fimc_ctx *ctx = fh_to_ctx(file->private_data);
+	struct fimc_dev *fimc = ctx->fimc_dev;
+	int ret;
 
-	return v4l2_m2m_poll(file, ctx->m2m_ctx, wait);
+	if (mutex_lock_interruptible(&fimc->lock))
+		return -ERESTARTSYS;
+
+	ret = v4l2_m2m_poll(file, ctx->m2m_ctx, wait);
+	mutex_unlock(&fimc->lock);
+
+	return ret;
 }
 
 
 static int fimc_m2m_mmap(struct file *file, struct vm_area_struct *vma)
 {
 	struct fimc_ctx *ctx = fh_to_ctx(file->private_data);
+	struct fimc_dev *fimc = ctx->fimc_dev;
+	int ret;
 
-	return v4l2_m2m_mmap(file, ctx->m2m_ctx, vma);
+	if (mutex_lock_interruptible(&fimc->lock))
+		return -ERESTARTSYS;
+
+	ret = v4l2_m2m_mmap(file, ctx->m2m_ctx, vma);
+	mutex_unlock(&fimc->lock);
+
+	return ret;
 }
 
 static const struct v4l2_file_operations fimc_m2m_fops = {
@@ -837,10 +868,6 @@ int fimc_register_m2m_device(struct fimc_dev *fimc,
 	vfd->minor = -1;
 	vfd->release = video_device_release;
 	vfd->lock = &fimc->lock;
-	/* Locking in file operations other than ioctl should be done
-	   by the driver, not the V4L2 core.
-	   This driver needs auditing so that this flag can be removed. */
-	set_bit(V4L2_FL_LOCK_ALL_FOPS, &vfd->flags);
 
 	snprintf(vfd->name, sizeof(vfd->name), "fimc.%d.m2m", fimc->id);
 	video_set_drvdata(vfd, fimc);

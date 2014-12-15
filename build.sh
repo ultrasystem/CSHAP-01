@@ -11,7 +11,7 @@ fi
 
 if [ ! -f $KERNELDIR/.config ];
 then
-  make -j4 ultrakernel_defconfig
+  make -j4 x4_defconfig
 fi
 
 . $KERNELDIR/.config

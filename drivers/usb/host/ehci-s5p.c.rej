@@ -1,0 +1,111 @@
+***************
+*** 239,278 ****
+  
+  	ehci = hcd_to_ehci(hcd);
+  	ehci->caps = hcd->regs;
+- 	ehci->regs = hcd->regs +
+- 		HC_LENGTH(ehci, readl(&ehci->caps->hc_capbase));
+  
+  	/* DMA burst Enable */
+  	writel(EHCI_INSNREG00_ENABLE_DMA_BURST, EHCI_INSNREG00(hcd->regs));
+  
+- 	dbg_hcs_params(ehci, "reset");
+- 	dbg_hcc_params(ehci, "reset");
+- 
+- 	/* cache this readonly data; minimize chip reads */
+- 	ehci->hcs_params = readl(&ehci->caps->hcs_params);
+- 
+- 	ehci_reset(ehci);
+- 
+  	err = usb_add_hcd(hcd, irq, IRQF_SHARED);
+  	if (err) {
+  		dev_err(&pdev->dev, "Failed to add USB HCD\n");
+- 		goto fail;
+  	}
+  
+  	platform_set_drvdata(pdev, s5p_ehci);
+  
+  	return 0;
+  
+- fail:
+- 	iounmap(hcd->regs);
+  fail_io:
+  	clk_disable(s5p_ehci->clk);
+  fail_clken:
+  	clk_put(s5p_ehci->clk);
+  fail_clk:
+  	usb_put_hcd(hcd);
+- fail_hcd:
+- 	kfree(s5p_ehci);
+  	return err;
+  }
+  
+--- 273,298 ----
+  
+  	ehci = hcd_to_ehci(hcd);
+  	ehci->caps = hcd->regs;
+  
+  	/* DMA burst Enable */
+  	writel(EHCI_INSNREG00_ENABLE_DMA_BURST, EHCI_INSNREG00(hcd->regs));
+  
+  	err = usb_add_hcd(hcd, irq, IRQF_SHARED);
+  	if (err) {
+  		dev_err(&pdev->dev, "Failed to add USB HCD\n");
++ 		goto fail_io;
+  	}
+  
+  	platform_set_drvdata(pdev, s5p_ehci);
+  
+  	return 0;
+  
+  fail_io:
+  	clk_disable(s5p_ehci->clk);
+  fail_clken:
+  	clk_put(s5p_ehci->clk);
+  fail_clk:
+  	usb_put_hcd(hcd);
+  	return err;
+  }
+  
+***************
+*** 318,344 ****
+  {
+  	struct s5p_ehci_hcd *s5p_ehci = dev_get_drvdata(dev);
+  	struct usb_hcd *hcd = s5p_ehci->hcd;
+- 	struct ehci_hcd *ehci = hcd_to_ehci(hcd);
+  	struct platform_device *pdev = to_platform_device(dev);
+  	struct s5p_ehci_platdata *pdata = pdev->dev.platform_data;
+- 	unsigned long flags;
+- 	int rc = 0;
+- 
+- 	if (time_before(jiffies, ehci->next_statechange))
+- 		msleep(20);
+- 
+- 	/*
+- 	 * Root hub was already suspended. Disable irq emission and
+- 	 * mark HW unaccessible.  The PM and USB cores make sure that
+- 	 * the root hub is either suspended or stopped.
+- 	 */
+- 	ehci_prepare_ports_for_controller_suspend(ehci, device_may_wakeup(dev));
+- 	spin_lock_irqsave(&ehci->lock, flags);
+- 	ehci_writel(ehci, 0, &ehci->regs->intr_enable);
+- 	(void)ehci_readl(ehci, &ehci->regs->intr_enable);
+  
+- 	clear_bit(HCD_FLAG_HW_ACCESSIBLE, &hcd->flags);
+- 	spin_unlock_irqrestore(&ehci->lock, flags);
+  
+  	if (pdata && pdata->phy_exit)
+  		pdata->phy_exit(pdev, S5P_USB_PHY_HOST);
+--- 335,346 ----
+  {
+  	struct s5p_ehci_hcd *s5p_ehci = dev_get_drvdata(dev);
+  	struct usb_hcd *hcd = s5p_ehci->hcd;
++ 	bool do_wakeup = device_may_wakeup(dev);
+  	struct platform_device *pdev = to_platform_device(dev);
+  	struct s5p_ehci_platdata *pdata = pdev->dev.platform_data;
++ 	int rc;
+  
++ 	rc = ehci_suspend(hcd, do_wakeup);
+  
+  	if (pdata && pdata->phy_exit)
+  		pdata->phy_exit(pdev, S5P_USB_PHY_HOST);

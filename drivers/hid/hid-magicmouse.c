@@ -16,6 +16,7 @@
 
 #include <linux/device.h>
 #include <linux/hid.h>
+#include <linux/input/mt.h>
 #include <linux/module.h>
 #include <linux/slab.h>
 #include <linux/usb.h>
@@ -48,10 +49,6 @@ static bool scroll_acceleration = false;
 module_param(scroll_acceleration, bool, 0644);
 MODULE_PARM_DESC(scroll_acceleration, "Accelerate sequential scroll events");
 
-static bool report_touches = true;
-module_param(report_touches, bool, 0644);
-MODULE_PARM_DESC(report_touches, "Emit touch records (otherwise, only use them for emulation)");
-
 static bool report_undeciphered;
 module_param(report_undeciphered, bool, 0644);
 MODULE_PARM_DESC(report_undeciphered, "Report undeciphered multi-touch state field using a MSC_RAW event");
@@ -71,15 +68,6 @@ MODULE_PARM_DESC(report_undeciphered, "Report undeciphered multi-touch state fie
 #define TOUCH_STATE_DRAG  0x40
 
 #define SCROLL_ACCEL_DEFAULT 7
-
-/* Single touch emulation should only begin when no touches are currently down.
- * This is true when single_touch_id is equal to NO_TOUCHES. If multiple touches
- * are down and the touch providing for single touch emulation is lifted,
- * single_touch_id is equal to SINGLE_TOUCH_UP. While single touch emulation is
- * occurring, single_touch_id corresponds with the tracking id of the touch used.
- */
-#define NO_TOUCHES -1
-#define SINGLE_TOUCH_UP -2
 
 /* Touch surface information. Dimension is in hundredths of a mm, min and max
  * are in units. */
@@ -129,7 +117,6 @@ struct magicmouse_sc {
 		u8 size;
 	} touches[16];
 	int tracking_ids[16];
-	int single_touch_id;
 };
 
 static int magicmouse_firm_touch(struct magicmouse_sc *msc)
@@ -268,16 +255,14 @@ static void magicmouse_emit_touch(struct magicmouse_sc *msc, int raw_id, u8 *tda
 		}
 	}
 
-	if (down) {
+	if (down)
 		msc->ntouches++;
-		if (msc->single_touch_id == NO_TOUCHES)
-			msc->single_touch_id = id;
-	} else if (msc->single_touch_id == id)
-		msc->single_touch_id = SINGLE_TOUCH_UP;
+
+	input_mt_slot(input, id);
+	input_mt_report_slot_state(input, MT_TOOL_FINGER, down);
 
 	/* Generate the input events for this touch. */
-	if (report_touches && down) {
-		input_report_abs(input, ABS_MT_TRACKING_ID, id);
+	if (down) {
 		input_report_abs(input, ABS_MT_TOUCH_MAJOR, touch_major << 2);
 		input_report_abs(input, ABS_MT_TOUCH_MINOR, touch_minor << 2);
 		input_report_abs(input, ABS_MT_ORIENTATION, -orientation);
@@ -290,8 +275,6 @@ static void magicmouse_emit_touch(struct magicmouse_sc *msc, int raw_id, u8 *tda
 			else /* USB_DEVICE_ID_APPLE_MAGICTRACKPAD */
 				input_event(input, EV_MSC, MSC_RAW, tdata[8]);
 		}
-
-		input_mt_sync(input);
 	}
 }
 
@@ -312,12 +295,6 @@ static int magicmouse_raw_event(struct hid_device *hdev,
 		for (ii = 0; ii < npoints; ii++)
 			magicmouse_emit_touch(msc, ii, data + ii * 9 + 4);
 
-		/* We don't need an MT sync here because trackpad emits a
-		 * BTN_TOUCH event in a new frame when all touches are released.
-		 */
-		if (msc->ntouches == 0)
-			msc->single_touch_id = NO_TOUCHES;
-
 		clicks = data[1];
 
 		/* The following bits provide a device specific timestamp. They
@@ -334,9 +311,6 @@ static int magicmouse_raw_event(struct hid_device *hdev,
 		msc->ntouches = 0;
 		for (ii = 0; ii < npoints; ii++)
 			magicmouse_emit_touch(msc, ii, data + ii * 8 + 6);
-
-		if (report_touches && msc->ntouches == 0)
-			input_mt_sync(input);
 
 		/* When emulating three-button mode, it is important
 		 * to have the current touch information before
@@ -514,8 +488,6 @@ static int magicmouse_probe(struct hid_device *hdev,
 
 	msc->quirks = id->driver_data;
 	hid_set_drvdata(hdev, msc);
-
-	msc->single_touch_id = NO_TOUCHES;
 
 	ret = hid_parse(hdev);
 	if (ret) {

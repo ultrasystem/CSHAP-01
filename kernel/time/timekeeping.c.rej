@@ -1,0 +1,51 @@
+***************
+*** 1150,1172 ****
+   */
+  void get_monotonic_boottime(struct timespec *ts)
+  {
+  	struct timespec tomono, sleep;
+  	unsigned int seq;
+- 	s64 nsecs;
+  
+  	WARN_ON(timekeeping_suspended);
+  
+  	do {
+- 		seq = read_seqbegin(&timekeeper.lock);
+- 		*ts = timekeeper.xtime;
+- 		tomono = timekeeper.wall_to_monotonic;
+- 		sleep = timekeeper.total_sleep_time;
+- 		nsecs = timekeeping_get_ns();
+  
+- 	} while (read_seqretry(&timekeeper.lock, seq));
+  
+- 	set_normalized_timespec(ts, ts->tv_sec + tomono.tv_sec + sleep.tv_sec,
+- 			ts->tv_nsec + tomono.tv_nsec + sleep.tv_nsec + nsecs);
+  }
+  EXPORT_SYMBOL_GPL(get_monotonic_boottime);
+  
+--- 1245,1269 ----
+   */
+  void get_monotonic_boottime(struct timespec *ts)
+  {
++ 	struct timekeeper *tk = &timekeeper;
+  	struct timespec tomono, sleep;
++ 	s64 nsec;
+  	unsigned int seq;
+  
+  	WARN_ON(timekeeping_suspended);
+  
+  	do {
++ 		seq = read_seqbegin(&tk->lock);
++ 		ts->tv_sec = tk->xtime_sec;
++ 		nsec = timekeeping_get_ns(tk);
++ 		tomono = tk->wall_to_monotonic;
++ 		sleep = tk->total_sleep_time;
+  
++ 	} while (read_seqretry(&tk->lock, seq));
+  
++ 	ts->tv_sec += tomono.tv_sec + sleep.tv_sec;
++ 	ts->tv_nsec = 0;
++ 	timespec_add_ns(ts, nsec + tomono.tv_nsec + sleep.tv_nsec);
+  }
+  EXPORT_SYMBOL_GPL(get_monotonic_boottime);
+  

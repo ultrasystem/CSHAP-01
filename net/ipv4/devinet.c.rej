@@ -1,0 +1,17 @@
+***************
+*** 734,740 ****
+  	case SIOCSIFBRDADDR:	/* Set the broadcast address */
+  	case SIOCSIFDSTADDR:	/* Set the destination address */
+  	case SIOCSIFNETMASK: 	/* Set the netmask for the interface */
+- 		ret = -EACCES;
+  		if (!capable(CAP_NET_ADMIN))
+  			goto out;
+  		ret = -EINVAL;
+--- 734,740 ----
+  	case SIOCSIFBRDADDR:	/* Set the broadcast address */
+  	case SIOCSIFDSTADDR:	/* Set the destination address */
+  	case SIOCSIFNETMASK: 	/* Set the netmask for the interface */
++ 		ret = -EPERM;
+  		if (!capable(CAP_NET_ADMIN))
+  			goto out;
+  		ret = -EINVAL;

@@ -1,0 +1,45 @@
+***************
+*** 243,265 ****
+  	err = usb_add_hcd(hcd, irq, IRQF_SHARED);
+  	if (err) {
+  		dev_err(&pdev->dev, "Failed to add USB HCD\n");
+- 		goto fail;
+  	}
+  
+  	platform_set_drvdata(pdev, exynos_ohci);
+  
+  	return 0;
+  
+- fail:
+- 	iounmap(hcd->regs);
+  fail_io:
+  	clk_disable(exynos_ohci->clk);
+  fail_clken:
+  	clk_put(exynos_ohci->clk);
+  fail_clk:
+  	usb_put_hcd(hcd);
+- fail_hcd:
+- 	kfree(exynos_ohci);
+  	return err;
+  }
+  
+--- 256,274 ----
+  	err = usb_add_hcd(hcd, irq, IRQF_SHARED);
+  	if (err) {
+  		dev_err(&pdev->dev, "Failed to add USB HCD\n");
++ 		goto fail_io;
+  	}
+  
+  	platform_set_drvdata(pdev, exynos_ohci);
+  
+  	return 0;
+  
+  fail_io:
+  	clk_disable(exynos_ohci->clk);
+  fail_clken:
+  	clk_put(exynos_ohci->clk);
+  fail_clk:
+  	usb_put_hcd(hcd);
+  	return err;
+  }
+  

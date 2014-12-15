@@ -1,0 +1,60 @@
+***************
+*** 78,83 ****
+  
+  # clock options
+  
+  config SAMSUNG_CLKSRC
+  	bool
+  	help
+--- 78,87 ----
+  
+  # clock options
+  
++ config SAMSUNG_CLOCK
++ 	bool
++ 	default y if !COMMON_CLK
++ 
+  config SAMSUNG_CLKSRC
+  	bool
+  	help
+***************
+*** 399,405 ****
+  
+  config S3C24XX_PWM
+  	bool "PWM device support"
+- 	select HAVE_PWM
+  	help
+  	  Support for exporting the PWM timer blocks via the pwm device
+  	  system
+--- 403,410 ----
+  
+  config S3C24XX_PWM
+  	bool "PWM device support"
++ 	select PWM
++ 	select PWM_SAMSUNG
+  	help
+  	  Support for exporting the PWM timer blocks via the pwm device
+  	  system
+***************
+*** 491,504 ****
+  	  Internal config node to apply common S5P sleep management code.
+  	  Can be selected by S5P and newer SoCs with similar sleep procedure.
+  
+- comment "Power Domain"
+- 
+- config SAMSUNG_PD
+- 	bool "Samsung Power Domain"
+- 	depends on PM_RUNTIME
+- 	help
+- 	  Say Y here if you want to control Power Domain by Runtime PM.
+- 
+  config DEBUG_S3C_UART
+  	depends on PLAT_SAMSUNG
+  	int
+--- 496,501 ----
+  	  Internal config node to apply common S5P sleep management code.
+  	  Can be selected by S5P and newer SoCs with similar sleep procedure.
+  
+  config DEBUG_S3C_UART
+  	depends on PLAT_SAMSUNG
+  	int

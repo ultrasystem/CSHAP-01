@@ -12,6 +12,7 @@
  */
 
 #include <linux/clk.h>
+#include <linux/of.h>
 #include <linux/platform_device.h>
 #include <mach/ohci.h>
 #include <plat/usb-phy.h>
@@ -168,6 +169,8 @@ static const struct hc_driver exynos_ohci_hc_driver = {
 	.start_port_reset	= ohci_start_port_reset,
 };
 
+static u64 ohci_exynos_dma_mask = DMA_BIT_MASK(32);
+
 static int __devinit exynos_ohci_probe(struct platform_device *pdev)
 {
 	struct exynos4_ohci_platdata *pdata;
@@ -184,7 +187,18 @@ static int __devinit exynos_ohci_probe(struct platform_device *pdev)
 		return -EINVAL;
 	}
 
-	exynos_ohci = kzalloc(sizeof(struct exynos_ohci_hcd), GFP_KERNEL);
+	/*
+	 * Right now device-tree probed devices don't get dma_mask set.
+	 * Since shared usb code relies on it, set it here for now.
+	 * Once we move to full device tree support this will vanish off.
+	 */
+	if (!pdev->dev.dma_mask)
+		pdev->dev.dma_mask = &ohci_exynos_dma_mask;
+	if (!pdev->dev.coherent_dma_mask)
+		pdev->dev.coherent_dma_mask = DMA_BIT_MASK(32);
+
+	exynos_ohci = devm_kzalloc(&pdev->dev, sizeof(struct exynos_ohci_hcd),
+					GFP_KERNEL);
 	if (!exynos_ohci)
 		return -ENOMEM;
 
@@ -194,8 +208,7 @@ static int __devinit exynos_ohci_probe(struct platform_device *pdev)
 					dev_name(&pdev->dev));
 	if (!hcd) {
 		dev_err(&pdev->dev, "Unable to create HCD\n");
-		err = -ENOMEM;
-		goto fail_hcd;
+		return -ENOMEM;
 	}
 
 	exynos_ohci->hcd = hcd;
@@ -220,7 +233,7 @@ static int __devinit exynos_ohci_probe(struct platform_device *pdev)
 
 	hcd->rsrc_start = res->start;
 	hcd->rsrc_len = resource_size(res);
-	hcd->regs = ioremap(res->start, resource_size(res));
+	hcd->regs = devm_ioremap(&pdev->dev, res->start, hcd->rsrc_len);
 	if (!hcd->regs) {
 		dev_err(&pdev->dev, "Failed to remap I/O memory\n");
 		err = -ENOMEM;
@@ -231,7 +244,7 @@ static int __devinit exynos_ohci_probe(struct platform_device *pdev)
 	if (!irq) {
 		dev_err(&pdev->dev, "Failed to get IRQ\n");
 		err = -ENODEV;
-		goto fail;
+		goto fail_io;
 	}
 
 	if (pdata->phy_init)
@@ -281,13 +294,10 @@ static int __devexit exynos_ohci_remove(struct platform_device *pdev)
 	if (pdata && pdata->phy_exit)
 		pdata->phy_exit(pdev, S5P_USB_PHY_HOST);
 
-	iounmap(hcd->regs);
-
 	clk_disable(exynos_ohci->clk);
 	clk_put(exynos_ohci->clk);
 
 	usb_put_hcd(hcd);
-	kfree(exynos_ohci);
 
 	return 0;
 }
@@ -329,6 +339,9 @@ static int exynos_ohci_suspend(struct device *dev)
 
 	if (pdata && pdata->phy_exit)
 		pdata->phy_exit(pdev, S5P_USB_PHY_HOST);
+
+	clk_disable(exynos_ohci->clk);
+
 fail:
 	spin_unlock_irqrestore(&ohci->lock, flags);
 
@@ -341,6 +354,8 @@ static int exynos_ohci_resume(struct device *dev)
 	struct usb_hcd *hcd = exynos_ohci->hcd;
 	struct platform_device *pdev = to_platform_device(dev);
 	struct exynos4_ohci_platdata *pdata = pdev->dev.platform_data;
+
+	clk_enable(exynos_ohci->clk);
 
 	if (pdata && pdata->phy_init)
 		pdata->phy_init(pdev, S5P_USB_PHY_HOST);
@@ -364,6 +379,14 @@ static const struct dev_pm_ops exynos_ohci_pm_ops = {
 	.runtime_resume		= ohci_hcd_exynos_drv_runtime_resume,
 };
 
+#ifdef CONFIG_OF
+static const struct of_device_id exynos_ohci_match[] = {
+	{ .compatible = "samsung,exynos-ohci" },
+	{},
+};
+MODULE_DEVICE_TABLE(of, exynos_ohci_match);
+#endif
+
 static struct platform_driver exynos_ohci_driver = {
 	.probe		= exynos_ohci_probe,
 	.remove		= __devexit_p(exynos_ohci_remove),
@@ -372,6 +395,7 @@ static struct platform_driver exynos_ohci_driver = {
 		.name	= "exynos-ohci",
 		.owner	= THIS_MODULE,
 		.pm	= &exynos_ohci_pm_ops,
+		.of_match_table	= of_match_ptr(exynos_ohci_match),
 	}
 };
 

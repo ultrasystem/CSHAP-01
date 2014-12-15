@@ -29,7 +29,6 @@
 #include <mach/crag6410.h>
 
 static struct s3c64xx_spi_csinfo wm0010_spi_csinfo = {
-	.set_level = gpio_set_value,
 	.line = S3C64XX_GPC(3),
 };
 
@@ -180,6 +179,11 @@ static const struct i2c_board_info wm1277_devs[] = {
 	  .platform_data = &wm8994_pdata,
 	  .irq = GLENFARCLAS_PMIC_IRQ_BASE + WM831X_IRQ_GPIO_2,
 	},
+};
+
+static const struct i2c_board_info wm5102_devs[] = {
+	{ I2C_BOARD_INFO("wm5102", 0x1a),
+	  .irq = GLENFARCLAS_PMIC_IRQ_BASE + WM831X_IRQ_GPIO_2, },
 };
 
 static const struct i2c_board_info wm5102_devs[] = {

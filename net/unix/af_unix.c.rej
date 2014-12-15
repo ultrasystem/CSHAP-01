@@ -1,0 +1,34 @@
+***************
+*** 1448,1454 ****
+  	if (NULL == siocb->scm)
+  		siocb->scm = &tmp_scm;
+  	wait_for_unix_gc();
+- 	err = scm_send(sock, msg, siocb->scm);
+  	if (err < 0)
+  		return err;
+  
+--- 1450,1456 ----
+  	if (NULL == siocb->scm)
+  		siocb->scm = &tmp_scm;
+  	wait_for_unix_gc();
++ 	err = scm_send(sock, msg, siocb->scm, false);
+  	if (err < 0)
+  		return err;
+  
+***************
+*** 1617,1623 ****
+  	if (NULL == siocb->scm)
+  		siocb->scm = &tmp_scm;
+  	wait_for_unix_gc();
+- 	err = scm_send(sock, msg, siocb->scm);
+  	if (err < 0)
+  		return err;
+  
+--- 1619,1625 ----
+  	if (NULL == siocb->scm)
+  		siocb->scm = &tmp_scm;
+  	wait_for_unix_gc();
++ 	err = scm_send(sock, msg, siocb->scm, false);
+  	if (err < 0)
+  		return err;
+  

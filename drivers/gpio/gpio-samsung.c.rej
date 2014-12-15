@@ -1,0 +1,17 @@
+***************
+*** 3080,3086 ****
+  	}
+  
+  	/* need to set base address for gpc4 */
+- 	exynos5_gpios_1[11].base = gpio_base1 + 0x2E0;
+  
+  	/* need to set base address for gpx */
+  	chip = &exynos5_gpios_1[21];
+--- 3083,3089 ----
+  	}
+  
+  	/* need to set base address for gpc4 */
++ 	exynos5_gpios_1[20].base = gpio_base1 + 0x2E0;
+  
+  	/* need to set base address for gpx */
+  	chip = &exynos5_gpios_1[21];

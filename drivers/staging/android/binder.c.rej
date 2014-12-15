@@ -1,0 +1,17 @@
+***************
+*** 2824,2830 ****
+  	mutex_unlock(&binder_lock);
+  	wait_event_interruptible(binder_user_error_wait, binder_stop_on_user_error < 2);
+  	if (ret && ret != -ERESTARTSYS)
+- 		printk(KERN_INFO "binder: %d:%d ioctl %x %lx returned %d\n", proc->pid, current->pid, cmd, arg, ret);
+  	return ret;
+  }
+  
+--- 2824,2830 ----
+  	mutex_unlock(&binder_lock);
+  	wait_event_interruptible(binder_user_error_wait, binder_stop_on_user_error < 2);
+  	if (ret && ret != -ERESTARTSYS)
++ 		pr_info("binder: %d:%d ioctl %x %lx returned %d\n", proc->pid, current->pid, cmd, arg, ret);
+  	return ret;
+  }
+  

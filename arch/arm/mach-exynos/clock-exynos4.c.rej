@@ -1,0 +1,299 @@
+***************
+*** 741,757 ****
+  		.ctrlbit	= (1 << 13),
+  	}, {
+  		.name		= "spi",
+- 		.devname	= "s3c64xx-spi.0",
+  		.enable		= exynos4_clk_ip_peril_ctrl,
+  		.ctrlbit	= (1 << 16),
+  	}, {
+  		.name		= "spi",
+- 		.devname	= "s3c64xx-spi.1",
+  		.enable		= exynos4_clk_ip_peril_ctrl,
+  		.ctrlbit	= (1 << 17),
+  	}, {
+  		.name		= "spi",
+- 		.devname	= "s3c64xx-spi.2",
+  		.enable		= exynos4_clk_ip_peril_ctrl,
+  		.ctrlbit	= (1 << 18),
+  	}, {
+--- 741,757 ----
+  		.ctrlbit	= (1 << 13),
+  	}, {
+  		.name		= "spi",
++ 		.devname	= "exynos4210-spi.0",
+  		.enable		= exynos4_clk_ip_peril_ctrl,
+  		.ctrlbit	= (1 << 16),
+  	}, {
+  		.name		= "spi",
++ 		.devname	= "exynos4210-spi.1",
+  		.enable		= exynos4_clk_ip_peril_ctrl,
+  		.ctrlbit	= (1 << 17),
+  	}, {
+  		.name		= "spi",
++ 		.devname	= "exynos4210-spi.2",
+  		.enable		= exynos4_clk_ip_peril_ctrl,
+  		.ctrlbit	= (1 << 18),
+  	}, {
+***************
+*** 775,784 ****
+  		.enable		= exynos4_clk_ip_peril_ctrl,
+  		.ctrlbit	= (1 << 27),
+  	}, {
+- 		.name		= "fimg2d",
+- 		.enable		= exynos4_clk_ip_image_ctrl,
+- 		.ctrlbit	= (1 << 0),
+- 	}, {
+  		.name		= "mfc",
+  		.devname	= "s5p-mfc",
+  		.enable		= exynos4_clk_ip_mfc_ctrl,
+--- 775,780 ----
+  		.enable		= exynos4_clk_ip_peril_ctrl,
+  		.ctrlbit	= (1 << 27),
+  	}, {
+  		.name		= "mfc",
+  		.devname	= "s5p-mfc",
+  		.enable		= exynos4_clk_ip_mfc_ctrl,
+***************
+*** 974,1020 ****
+  	[1] = &exynos4_clk_sclk_apll.clk,
+  };
+  
+- static struct clksrc_sources exynos4_clkset_mout_g2d0 = {
+  	.sources	= exynos4_clkset_mout_g2d0_list,
+  	.nr_sources	= ARRAY_SIZE(exynos4_clkset_mout_g2d0_list),
+  };
+  
+- static struct clksrc_clk exynos4_clk_mout_g2d0 = {
+- 	.clk	= {
+- 		.name		= "mout_g2d0",
+- 	},
+- 	.sources = &exynos4_clkset_mout_g2d0,
+- 	.reg_src = { .reg = EXYNOS4_CLKSRC_IMAGE, .shift = 0, .size = 1 },
+- };
+- 
+  static struct clk *exynos4_clkset_mout_g2d1_list[] = {
+  	[0] = &exynos4_clk_mout_epll.clk,
+  	[1] = &exynos4_clk_sclk_vpll.clk,
+  };
+  
+- static struct clksrc_sources exynos4_clkset_mout_g2d1 = {
+  	.sources	= exynos4_clkset_mout_g2d1_list,
+  	.nr_sources	= ARRAY_SIZE(exynos4_clkset_mout_g2d1_list),
+  };
+  
+- static struct clksrc_clk exynos4_clk_mout_g2d1 = {
+- 	.clk	= {
+- 		.name		= "mout_g2d1",
+- 	},
+- 	.sources = &exynos4_clkset_mout_g2d1,
+- 	.reg_src = { .reg = EXYNOS4_CLKSRC_IMAGE, .shift = 4, .size = 1 },
+- };
+- 
+- static struct clk *exynos4_clkset_mout_g2d_list[] = {
+- 	[0] = &exynos4_clk_mout_g2d0.clk,
+- 	[1] = &exynos4_clk_mout_g2d1.clk,
+- };
+- 
+- static struct clksrc_sources exynos4_clkset_mout_g2d = {
+- 	.sources	= exynos4_clkset_mout_g2d_list,
+- 	.nr_sources	= ARRAY_SIZE(exynos4_clkset_mout_g2d_list),
+- };
+- 
+  static struct clk *exynos4_clkset_mout_mfc0_list[] = {
+  	[0] = &exynos4_clk_mout_mpll.clk,
+  	[1] = &exynos4_clk_sclk_apll.clk,
+--- 970,990 ----
+  	[1] = &exynos4_clk_sclk_apll.clk,
+  };
+  
++ struct clksrc_sources exynos4_clkset_mout_g2d0 = {
+  	.sources	= exynos4_clkset_mout_g2d0_list,
+  	.nr_sources	= ARRAY_SIZE(exynos4_clkset_mout_g2d0_list),
+  };
+  
+  static struct clk *exynos4_clkset_mout_g2d1_list[] = {
+  	[0] = &exynos4_clk_mout_epll.clk,
+  	[1] = &exynos4_clk_sclk_vpll.clk,
+  };
+  
++ struct clksrc_sources exynos4_clkset_mout_g2d1 = {
+  	.sources	= exynos4_clkset_mout_g2d1_list,
+  	.nr_sources	= ARRAY_SIZE(exynos4_clkset_mout_g2d1_list),
+  };
+  
+  static struct clk *exynos4_clkset_mout_mfc0_list[] = {
+  	[0] = &exynos4_clk_mout_mpll.clk,
+  	[1] = &exynos4_clk_sclk_apll.clk,
+***************
+*** 1281,1293 ****
+  		.reg_div = { .reg = EXYNOS4_CLKDIV_LCD0, .shift = 0, .size = 4 },
+  	}, {
+  		.clk	= {
+- 			.name		= "sclk_fimg2d",
+- 		},
+- 		.sources = &exynos4_clkset_mout_g2d,
+- 		.reg_src = { .reg = EXYNOS4_CLKSRC_IMAGE, .shift = 8, .size = 1 },
+- 		.reg_div = { .reg = EXYNOS4_CLKDIV_IMAGE, .shift = 0, .size = 4 },
+- 	}, {
+- 		.clk	= {
+  			.name		= "sclk_mfc",
+  			.devname	= "s5p-mfc",
+  		},
+--- 1251,1256 ----
+  		.reg_div = { .reg = EXYNOS4_CLKDIV_LCD0, .shift = 0, .size = 4 },
+  	}, {
+  		.clk	= {
+  			.name		= "sclk_mfc",
+  			.devname	= "s5p-mfc",
+  		},
+***************
+*** 1397,1436 ****
+  	.reg_div = { .reg = EXYNOS4_CLKDIV_FSYS2, .shift = 24, .size = 8 },
+  };
+  
+  static struct clksrc_clk exynos4_clk_sclk_spi0 = {
+  	.clk	= {
+  		.name		= "sclk_spi",
+- 		.devname	= "s3c64xx-spi.0",
+  		.enable		= exynos4_clksrc_mask_peril1_ctrl,
+  		.ctrlbit	= (1 << 16),
+  	},
+- 	.sources = &exynos4_clkset_group,
+- 	.reg_src = { .reg = EXYNOS4_CLKSRC_PERIL1, .shift = 16, .size = 4 },
+- 	.reg_div = { .reg = EXYNOS4_CLKDIV_PERIL1, .shift = 0, .size = 4 },
+  };
+  
+  static struct clksrc_clk exynos4_clk_sclk_spi1 = {
+  	.clk	= {
+  		.name		= "sclk_spi",
+- 		.devname	= "s3c64xx-spi.1",
+  		.enable		= exynos4_clksrc_mask_peril1_ctrl,
+  		.ctrlbit	= (1 << 20),
+  	},
+- 	.sources = &exynos4_clkset_group,
+- 	.reg_src = { .reg = EXYNOS4_CLKSRC_PERIL1, .shift = 20, .size = 4 },
+- 	.reg_div = { .reg = EXYNOS4_CLKDIV_PERIL1, .shift = 16, .size = 4 },
+  };
+  
+  static struct clksrc_clk exynos4_clk_sclk_spi2 = {
+  	.clk	= {
+  		.name		= "sclk_spi",
+- 		.devname	= "s3c64xx-spi.2",
+  		.enable		= exynos4_clksrc_mask_peril1_ctrl,
+  		.ctrlbit	= (1 << 24),
+  	},
+- 	.sources = &exynos4_clkset_group,
+- 	.reg_src = { .reg = EXYNOS4_CLKSRC_PERIL1, .shift = 24, .size = 4 },
+- 	.reg_div = { .reg = EXYNOS4_CLKDIV_PERIL2, .shift = 0, .size = 4 },
+  };
+  
+  /* Clock initialization code */
+--- 1360,1426 ----
+  	.reg_div = { .reg = EXYNOS4_CLKDIV_FSYS2, .shift = 24, .size = 8 },
+  };
+  
++ static struct clksrc_clk exynos4_clk_mdout_spi0 = {
++ 	.clk	= {
++ 		.name		= "mdout_spi",
++ 		.devname	= "exynos4210-spi.0",
++ 	},
++ 	.sources = &exynos4_clkset_group,
++ 	.reg_src = { .reg = EXYNOS4_CLKSRC_PERIL1, .shift = 16, .size = 4 },
++ 	.reg_div = { .reg = EXYNOS4_CLKDIV_PERIL1, .shift = 0, .size = 4 },
++ };
++ 
++ static struct clksrc_clk exynos4_clk_mdout_spi1 = {
++ 	.clk	= {
++ 		.name		= "mdout_spi",
++ 		.devname	= "exynos4210-spi.1",
++ 	},
++ 	.sources = &exynos4_clkset_group,
++ 	.reg_src = { .reg = EXYNOS4_CLKSRC_PERIL1, .shift = 20, .size = 4 },
++ 	.reg_div = { .reg = EXYNOS4_CLKDIV_PERIL1, .shift = 16, .size = 4 },
++ };
++ 
++ static struct clksrc_clk exynos4_clk_mdout_spi2 = {
++ 	.clk	= {
++ 		.name		= "mdout_spi",
++ 		.devname	= "exynos4210-spi.2",
++ 	},
++ 	.sources = &exynos4_clkset_group,
++ 	.reg_src = { .reg = EXYNOS4_CLKSRC_PERIL1, .shift = 24, .size = 4 },
++ 	.reg_div = { .reg = EXYNOS4_CLKDIV_PERIL2, .shift = 0, .size = 4 },
++ };
++ 
+  static struct clksrc_clk exynos4_clk_sclk_spi0 = {
+  	.clk	= {
+  		.name		= "sclk_spi",
++ 		.devname	= "exynos4210-spi.0",
++ 		.parent		= &exynos4_clk_mdout_spi0.clk,
+  		.enable		= exynos4_clksrc_mask_peril1_ctrl,
+  		.ctrlbit	= (1 << 16),
+  	},
++ 	.reg_div = { .reg = EXYNOS4_CLKDIV_PERIL1, .shift = 8, .size = 8 },
+  };
+  
+  static struct clksrc_clk exynos4_clk_sclk_spi1 = {
+  	.clk	= {
+  		.name		= "sclk_spi",
++ 		.devname	= "exynos4210-spi.1",
++ 		.parent		= &exynos4_clk_mdout_spi1.clk,
+  		.enable		= exynos4_clksrc_mask_peril1_ctrl,
+  		.ctrlbit	= (1 << 20),
+  	},
++ 	.reg_div = { .reg = EXYNOS4_CLKDIV_PERIL1, .shift = 24, .size = 8 },
+  };
+  
+  static struct clksrc_clk exynos4_clk_sclk_spi2 = {
+  	.clk	= {
+  		.name		= "sclk_spi",
++ 		.devname	= "exynos4210-spi.2",
++ 		.parent		= &exynos4_clk_mdout_spi2.clk,
+  		.enable		= exynos4_clksrc_mask_peril1_ctrl,
+  		.ctrlbit	= (1 << 24),
+  	},
++ 	.reg_div = { .reg = EXYNOS4_CLKDIV_PERIL2, .shift = 8, .size = 8 },
+  };
+  
+  /* Clock initialization code */
+***************
+*** 1486,1492 ****
+  	&exynos4_clk_sclk_spi0,
+  	&exynos4_clk_sclk_spi1,
+  	&exynos4_clk_sclk_spi2,
+- 
+  };
+  
+  static struct clk_lookup exynos4_clk_lookup[] = {
+--- 1476,1484 ----
+  	&exynos4_clk_sclk_spi0,
+  	&exynos4_clk_sclk_spi1,
+  	&exynos4_clk_sclk_spi2,
++ 	&exynos4_clk_mdout_spi0,
++ 	&exynos4_clk_mdout_spi1,
++ 	&exynos4_clk_mdout_spi2,
+  };
+  
+  static struct clk_lookup exynos4_clk_lookup[] = {
+***************
+*** 1502,1510 ****
+  	CLKDEV_INIT("dma-pl330.0", "apb_pclk", &exynos4_clk_pdma0),
+  	CLKDEV_INIT("dma-pl330.1", "apb_pclk", &exynos4_clk_pdma1),
+  	CLKDEV_INIT("dma-pl330.2", "apb_pclk", &exynos4_clk_mdma1),
+- 	CLKDEV_INIT("s3c64xx-spi.0", "spi_busclk0", &exynos4_clk_sclk_spi0.clk),
+- 	CLKDEV_INIT("s3c64xx-spi.1", "spi_busclk0", &exynos4_clk_sclk_spi1.clk),
+- 	CLKDEV_INIT("s3c64xx-spi.2", "spi_busclk0", &exynos4_clk_sclk_spi2.clk),
+  };
+  
+  static int xtal_rate;
+--- 1494,1502 ----
+  	CLKDEV_INIT("dma-pl330.0", "apb_pclk", &exynos4_clk_pdma0),
+  	CLKDEV_INIT("dma-pl330.1", "apb_pclk", &exynos4_clk_pdma1),
+  	CLKDEV_INIT("dma-pl330.2", "apb_pclk", &exynos4_clk_mdma1),
++ 	CLKDEV_INIT("exynos4210-spi.0", "spi_busclk0", &exynos4_clk_sclk_spi0.clk),
++ 	CLKDEV_INIT("exynos4210-spi.1", "spi_busclk0", &exynos4_clk_sclk_spi1.clk),
++ 	CLKDEV_INIT("exynos4210-spi.2", "spi_busclk0", &exynos4_clk_sclk_spi2.clk),
+  };
+  
+  static int xtal_rate;
