@@ -30,7 +30,6 @@
 #include "s5p_mfc_enc.h"
 #include "s5p_mfc_intr.h"
 #include "s5p_mfc_opr.h"
-#include "s5p_mfc_shm.h"
 
 static struct s5p_mfc_fmt formats[] = {
 	{
@@ -539,16 +538,6 @@ static struct mfc_control controls[] = {
 		.maximum = 1,
 		.step = 1,
 		.default_value = 0,
-	},
-	{
-		.id = V4L2_CID_CODEC_FRAME_TAG,
-		.type = V4L2_CTRL_TYPE_INTEGER,
-		.name = "Frame Tag",
-		.minimum = 0,
-		.maximum = INT_MAX,
-		.step = 1,
-		.default_value = 0,
-		.is_volatile = 1,
 	},
 };
 
@@ -1153,23 +1142,6 @@ static int vidioc_dqbuf(struct file *file, void *priv, struct v4l2_buffer *buf)
 	return -EINVAL;
 }
 
-/* Export DMA buffer */
-static int vidioc_expbuf(struct file *file, void *priv,
-	struct v4l2_exportbuffer *eb)
-{
-	struct s5p_mfc_ctx *ctx = fh_to_ctx(priv);
-	int ret;
-
-	if (eb->mem_offset < DST_QUEUE_OFF_BASE)
-		return vb2_expbuf(&ctx->vq_src, eb);
-
-	eb->mem_offset -= DST_QUEUE_OFF_BASE;
-	ret = vb2_expbuf(&ctx->vq_dst, eb);
-	eb->mem_offset += DST_QUEUE_OFF_BASE;
-
-	return ret;
-}
-
 /* Stream on */
 static int vidioc_streamon(struct file *file, void *priv,
 			   enum v4l2_buf_type type)
@@ -1453,9 +1425,6 @@ static int s5p_mfc_enc_s_ctrl(struct v4l2_ctrl *ctrl)
 	case V4L2_CID_MPEG_VIDEO_MPEG4_QPEL:
 		p->codec.mpeg4.quarter_pixel = ctrl->val;
 		break;
-	case V4L2_CID_CODEC_FRAME_TAG:
-		ctx->frame_tag = ctrl->val;
-		break;
 	default:
 		v4l2_err(&dev->v4l2_dev, "Invalid control, id=%d, val=%d\n",
 							ctrl->id, ctrl->val);
@@ -1464,23 +1433,8 @@ static int s5p_mfc_enc_s_ctrl(struct v4l2_ctrl *ctrl)
 	return ret;
 }
 
-static int s5p_mfc_enc_g_v_ctrl(struct v4l2_ctrl *ctrl)
-{
-	struct s5p_mfc_ctx *ctx = ctrl_to_ctx(ctrl);
-
-	switch (ctrl->id) {
-	case V4L2_CID_CODEC_FRAME_TAG:
-		ctrl->val = s5p_mfc_read_shm(ctx, GET_FRAME_TAG_TOP);
-		break;
-	default:
-		return -EINVAL;
-	}
-	return 0;
-}
-
 static const struct v4l2_ctrl_ops s5p_mfc_enc_ctrl_ops = {
 	.s_ctrl = s5p_mfc_enc_s_ctrl,
-	.g_volatile_ctrl = s5p_mfc_enc_g_v_ctrl,
 };
 
 static int vidioc_s_parm(struct file *file, void *priv,
@@ -1533,7 +1487,6 @@ static const struct v4l2_ioctl_ops s5p_mfc_enc_ioctl_ops = {
 	.vidioc_querybuf = vidioc_querybuf,
 	.vidioc_qbuf = vidioc_qbuf,
 	.vidioc_dqbuf = vidioc_dqbuf,
-	.vidioc_expbuf = vidioc_expbuf,
 	.vidioc_streamon = vidioc_streamon,
 	.vidioc_streamoff = vidioc_streamoff,
 	.vidioc_s_parm = vidioc_s_parm,
