@@ -33,6 +33,7 @@
 #include <linux/bitops.h>
 #include <linux/regulator/consumer.h>
 #include <linux/workqueue.h>
+#include <plat/cpu.h>
 
 #include "dw_mmc.h"
 
@@ -405,22 +406,10 @@ static void dw_mci_idmac_start_dma(struct dw_mci *host, unsigned int sg_len)
 static int dw_mci_idmac_init(struct dw_mci *host)
 {
 	struct idmac_desc *p;
-	int i, dma_support;
+	int i;
 
 	/* Number of descriptors in the ring buffer */
 	host->ring_size = PAGE_SIZE / sizeof(struct idmac_desc);
-
-	/* Check if Hardware Configuration Register has support for DMA */
-	dma_support = (mci_readl(host, HCON) >> 16) & 0x3;
-
-	if (!dma_support || dma_support > 2) {
-		dev_err(&host->dev,
-			"Host Controller does not support IDMA Tx.\n");
-		host->dma_ops = NULL;
-		return -ENODEV;
-	}
-
-	dev_info(&host->dev, "Using internal DMA controller.\n");
 
 	/* Forward link the descriptor list */
 	for (i = 0, p = host->sg_cpu; i < host->ring_size - 1; i++, p++)
@@ -627,7 +616,6 @@ static void dw_mci_setup_bus(struct dw_mci_slot *slot)
 {
 	struct dw_mci *host = slot->host;
 	u32 div;
-	u32 clk_en_a;
 
 	if (slot->clock != host->current_speed) {
 		div = host->bus_hz / slot->clock;
@@ -660,11 +648,9 @@ static void dw_mci_setup_bus(struct dw_mci_slot *slot)
 		mci_send_cmd(slot,
 			     SDMMC_CMD_UPD_CLK | SDMMC_CMD_PRV_DAT_WAIT, 0);
 
-		/* enable clock; only low power if no SDIO */
-		clk_en_a = SDMMC_CLKEN_ENABLE << slot->id;
-		if (!(mci_readl(host, INTMASK) & SDMMC_INT_SDIO(slot->id)))
-			clk_en_a |= SDMMC_CLKEN_LOW_PWR << slot->id;
-		mci_writel(host, CLKENA, clk_en_a);
+		/* enable clock */
+		mci_writel(host, CLKENA, ((SDMMC_CLKEN_ENABLE |
+			   SDMMC_CLKEN_LOW_PWR) << slot->id));
 
 		/* inform CIU */
 		mci_send_cmd(slot,
@@ -806,6 +792,9 @@ static void dw_mci_set_ios(struct mmc_host *mmc, struct mmc_ios *ios)
 
 	mci_writel(slot->host, UHS_REG, regs);
 
+	if (slot->host->pdata->set_io_timing)
+		slot->host->pdata->set_io_timing(slot->host, ios->timing);
+
 	if (ios->clock) {
 		/*
 		 * Use mirror of ios->clock to prevent race with mmc
@@ -865,30 +854,6 @@ static int dw_mci_get_cd(struct mmc_host *mmc)
 	return present;
 }
 
-/*
- * Disable lower power mode.
- *
- * Low power mode will stop the card clock when idle.  According to the
- * description of the CLKENA register we should disable low power mode
- * for SDIO cards if we need SDIO interrupts to work.
- *
- * This function is fast if low power mode is already disabled.
- */
-static void dw_mci_disable_low_power(struct dw_mci_slot *slot)
-{
-	struct dw_mci *host = slot->host;
-	u32 clk_en_a;
-	const u32 clken_low_pwr = SDMMC_CLKEN_LOW_PWR << slot->id;
-
-	clk_en_a = mci_readl(host, CLKENA);
-
-	if (clk_en_a & clken_low_pwr) {
-		mci_writel(host, CLKENA, clk_en_a & ~clken_low_pwr);
-		mci_send_cmd(slot, SDMMC_CMD_UPD_CLK |
-			     SDMMC_CMD_PRV_DAT_WAIT, 0);
-	}
-}
-
 static void dw_mci_enable_sdio_irq(struct mmc_host *mmc, int enb)
 {
 	struct dw_mci_slot *slot = mmc_priv(mmc);
@@ -898,14 +863,6 @@ static void dw_mci_enable_sdio_irq(struct mmc_host *mmc, int enb)
 	/* Enable/disable Slot Specific SDIO interrupt */
 	int_mask = mci_readl(host, INTMASK);
 	if (enb) {
-		/*
-		 * Turn off low power mode if it was enabled.  This is a bit of
-		 * a heavy operation and we disable / enable IRQs a lot, so
-		 * we'll leave low power mode disabled and it will get
-		 * re-enabled again in dw_mci_setup_bus().
-		 */
-		dw_mci_disable_low_power(slot);
-
 		mci_writel(host, INTMASK,
 			   (int_mask | SDMMC_INT_SDIO(slot->id)));
 	} else {
@@ -1464,10 +1421,22 @@ static void dw_mci_read_data_pio(struct dw_mci *host)
 			nbytes += len;
 			remain -= len;
 		} while (remain);
-
 		sg_miter->consumed = offset;
+
 		status = mci_readl(host, MINTSTS);
 		mci_writel(host, RINTSTS, SDMMC_INT_RXDR);
+		if (status & DW_MCI_DATA_ERROR_FLAGS) {
+			host->data_status = status;
+			data->bytes_xfered += nbytes;
+			sg_miter_stop(sg_miter);
+			host->sg = NULL;
+			smp_wmb();
+
+			set_bit(EVENT_DATA_ERROR, &host->pending_events);
+
+			tasklet_schedule(&host->tasklet);
+			return;
+		}
 	} while (status & SDMMC_INT_RXDR); /*if the RXDR is ready read again*/
 	data->bytes_xfered += nbytes;
 
@@ -1520,10 +1489,23 @@ static void dw_mci_write_data_pio(struct dw_mci *host)
 			nbytes += len;
 			remain -= len;
 		} while (remain);
-
 		sg_miter->consumed = offset;
+
 		status = mci_readl(host, MINTSTS);
 		mci_writel(host, RINTSTS, SDMMC_INT_TXDR);
+		if (status & DW_MCI_DATA_ERROR_FLAGS) {
+			host->data_status = status;
+			data->bytes_xfered += nbytes;
+			sg_miter_stop(sg_miter);
+			host->sg = NULL;
+
+			smp_wmb();
+
+			set_bit(EVENT_DATA_ERROR, &host->pending_events);
+
+			tasklet_schedule(&host->tasklet);
+			return;
+		}
 	} while (status & SDMMC_INT_TXDR); /* if TXDR write again */
 	data->bytes_xfered += nbytes;
 
@@ -1557,11 +1539,12 @@ static void dw_mci_cmd_interrupt(struct dw_mci *host, u32 status)
 static irqreturn_t dw_mci_interrupt(int irq, void *dev_id)
 {
 	struct dw_mci *host = dev_id;
-	u32 pending;
+	u32 status, pending;
 	unsigned int pass_count = 0;
 	int i;
 
 	do {
+		status = mci_readl(host, RINTSTS);
 		pending = mci_readl(host, MINTSTS); /* read-only mask reg */
 
 		/*
@@ -1579,7 +1562,7 @@ static irqreturn_t dw_mci_interrupt(int irq, void *dev_id)
 
 		if (pending & DW_MCI_CMD_ERROR_FLAGS) {
 			mci_writel(host, RINTSTS, DW_MCI_CMD_ERROR_FLAGS);
-			host->cmd_status = pending;
+			host->cmd_status = status;
 			smp_wmb();
 			set_bit(EVENT_CMD_COMPLETE, &host->pending_events);
 		}
@@ -1587,16 +1570,18 @@ static irqreturn_t dw_mci_interrupt(int irq, void *dev_id)
 		if (pending & DW_MCI_DATA_ERROR_FLAGS) {
 			/* if there is an error report DATA_ERROR */
 			mci_writel(host, RINTSTS, DW_MCI_DATA_ERROR_FLAGS);
-			host->data_status = pending;
+			host->data_status = status;
 			smp_wmb();
 			set_bit(EVENT_DATA_ERROR, &host->pending_events);
-			tasklet_schedule(&host->tasklet);
+			if (!(pending & (SDMMC_INT_DTO | SDMMC_INT_DCRC |
+					 SDMMC_INT_SBE | SDMMC_INT_EBE)))
+				tasklet_schedule(&host->tasklet);
 		}
 
 		if (pending & SDMMC_INT_DATA_OVER) {
 			mci_writel(host, RINTSTS, SDMMC_INT_DATA_OVER);
 			if (!host->data_status)
-				host->data_status = pending;
+				host->data_status = status;
 			smp_wmb();
 			if (host->dir_status == DW_MCI_RECV_STATUS) {
 				if (host->sg != NULL)
@@ -1620,7 +1605,7 @@ static irqreturn_t dw_mci_interrupt(int irq, void *dev_id)
 
 		if (pending & SDMMC_INT_CMD_DONE) {
 			mci_writel(host, RINTSTS, SDMMC_INT_CMD_DONE);
-			dw_mci_cmd_interrupt(host, pending);
+			dw_mci_cmd_interrupt(host, status);
 		}
 
 		if (pending & SDMMC_INT_CD) {
@@ -1895,6 +1880,7 @@ static void dw_mci_init_dma(struct dw_mci *host)
 	/* Determine which DMA interface to use */
 #ifdef CONFIG_MMC_DW_IDMAC
 	host->dma_ops = &dw_mci_idmac_ops;
+	dev_info(&host->dev, "Using internal DMA controller.\n");
 #endif
 
 	if (!host->dma_ops)
@@ -1944,8 +1930,9 @@ static bool mci_wait_reset(struct device *dev, struct dw_mci *host)
 
 int dw_mci_probe(struct dw_mci *host)
 {
-	int width, i, ret = 0;
+	int width, i = 0, ret = 0;
 	u32 fifo_size;
+	struct dw_mci_board *brd = NULL;
 
 	if (!host->pdata || !host->pdata->init) {
 		dev_err(&host->dev,
@@ -1965,8 +1952,38 @@ int dw_mci_probe(struct dw_mci *host)
 		return -ENODEV;
 	}
 
+	host->hclk = clk_get(&host->dev, host->pdata->hclk_name);
+	if (IS_ERR(host->hclk)) {
+		dev_err(&host->dev,
+				"failed to get hclk\n");
+		ret = PTR_ERR(host->hclk);
+		goto err_freehost;
+	}
+	clk_enable(host->hclk);
+
+	host->cclk = clk_get(&host->dev, host->pdata->cclk_name);
+	if (IS_ERR(host->cclk)) {
+		dev_err(&host->dev,
+				"failed to get cclk\n");
+		ret = PTR_ERR(host->cclk);
+		goto err_free_hclk;
+	}
+	clk_enable(host->cclk);
+
+	if (host->pdata->cfg_gpio)
+		host->pdata->cfg_gpio(MMC_BUS_WIDTH_8);
+
+	host->pdata->bus_hz = 66 * 1000 * 1000;
+
 	host->bus_hz = host->pdata->bus_hz;
 	host->quirks = host->pdata->quirks;
+
+	/* Set Phase Shift Register */
+	if (soc_is_exynos4212() || soc_is_exynos4412()) {
+		brd = host->pdata;
+		brd->sdr_timing = 0x00010001;
+		brd->ddr_timing = 0x00010001;
+	}
 
 	spin_lock_init(&host->lock);
 	INIT_LIST_HEAD(&host->queue);
@@ -2051,6 +2068,16 @@ int dw_mci_probe(struct dw_mci *host)
 	else
 		host->num_slots = ((mci_readl(host, HCON) >> 1) & 0x1F) + 1;
 
+	/*
+	 * Enable interrupts for command done, data over, data empty, card det,
+	 * receive ready and error such as transmit, receive timeout, crc error
+	 */
+	mci_writel(host, RINTSTS, 0xFFFFFFFF);
+	mci_writel(host, INTMASK, SDMMC_INT_CMD_DONE | SDMMC_INT_DATA_OVER |
+		   SDMMC_INT_TXDR | SDMMC_INT_RXDR |
+		   DW_MCI_ERROR_FLAGS | SDMMC_INT_CD);
+	mci_writel(host, CTRL, SDMMC_CTRL_INT_ENABLE); /* Enable mci interrupt */
+
 	/* We need at least one slot to succeed */
 	for (i = 0; i < host->num_slots; i++) {
 		ret = dw_mci_init_slot(host, i);
@@ -2071,16 +2098,6 @@ int dw_mci_probe(struct dw_mci *host)
 		host->data_offset = DATA_OFFSET;
 	else
 		host->data_offset = DATA_240A_OFFSET;
-
-	/*
-	 * Enable interrupts for command done, data over, data empty, card det,
-	 * receive ready and error such as transmit, receive timeout, crc error
-	 */
-	mci_writel(host, RINTSTS, 0xFFFFFFFF);
-	mci_writel(host, INTMASK, SDMMC_INT_CMD_DONE | SDMMC_INT_DATA_OVER |
-		   SDMMC_INT_TXDR | SDMMC_INT_RXDR |
-		   DW_MCI_ERROR_FLAGS | SDMMC_INT_CD);
-	mci_writel(host, CTRL, SDMMC_CTRL_INT_ENABLE); /* Enable mci interrupt */
 
 	dev_info(&host->dev, "DW MMC controller at irq %d, "
 		 "%d bit host data width, "
@@ -2113,6 +2130,12 @@ err_dmaunmap:
 		regulator_disable(host->vmmc);
 		regulator_put(host->vmmc);
 	}
+	clk_disable(host->cclk);
+	clk_put(host->cclk);
+err_free_hclk:
+	clk_disable(host->hclk);
+	clk_put(host->hclk);
+err_freehost:
 	return ret;
 }
 EXPORT_SYMBOL(dw_mci_probe);
@@ -2146,6 +2169,10 @@ void dw_mci_remove(struct dw_mci *host)
 		regulator_put(host->vmmc);
 	}
 
+	clk_disable(host->cclk);
+	clk_put(host->cclk);
+	clk_disable(host->hclk);
+	clk_put(host->hclk);
 }
 EXPORT_SYMBOL(dw_mci_remove);
 
@@ -2193,7 +2220,7 @@ int dw_mci_resume(struct dw_mci *host)
 		return ret;
 	}
 
-	if (host->use_dma && host->dma_ops->init)
+	if (host->dma_ops->init)
 		host->dma_ops->init(host);
 
 	/* Restore the old value at FIFOTH register */

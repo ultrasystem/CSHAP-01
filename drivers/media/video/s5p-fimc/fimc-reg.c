@@ -15,40 +15,6 @@
 
 #include "fimc-reg.h"
 #include "fimc-core.h"
-#include <mach/map.h>
-
-int fimc_hwset_sysreg_camblk_isp_wb(struct fimc_dev *fimc)
-{
-    
-	u32 camblk_cfg = readl(SYSREG_CAMERA_BLK);
-        u32 ispblk_cfg = readl(SYSREG_ISP_BLK);
-        camblk_cfg = camblk_cfg & (~(0x7 << 20));
-        if (fimc->id == 0)
-                camblk_cfg = camblk_cfg | (0x1 << 20);
-        else if (fimc->id == 1)
-                camblk_cfg = camblk_cfg | (0x2 << 20);
-        else if (fimc->id == 2)
-                camblk_cfg = camblk_cfg | (0x4 << 20);
-        else if (fimc->id == 3)
-                camblk_cfg = camblk_cfg | (0x7 << 20); /* FIXME*/
-        else
-                err("%s: not supported id : %d\n", __func__, fimc->id);
-
-        camblk_cfg = camblk_cfg & (~(0x1 << 15));
-        writel(camblk_cfg, SYSREG_CAMERA_BLK);
-        udelay(1000);
-        camblk_cfg = camblk_cfg | (0x1 << 15);
-        writel(camblk_cfg, SYSREG_CAMERA_BLK);
-
-        ispblk_cfg = ispblk_cfg & (~(0x1 << 7));
-        writel(ispblk_cfg, SYSREG_ISP_BLK);
-        udelay(1000);
-        ispblk_cfg = ispblk_cfg | (0x1 << 7);
-        writel(ispblk_cfg, SYSREG_ISP_BLK);
-
-        return 0;
-}
-
 
 
 void fimc_hw_reset(struct fimc_dev *dev)
@@ -175,11 +141,7 @@ void fimc_hw_set_target_format(struct fimc_ctx *ctx)
 
 	cfg = readl(dev->regs + FIMC_REG_CITAREA);
 	cfg &= ~FIMC_REG_CITAREA_MASK;
-	if(FIMC_FMT_JPEG==frame->fmt->color)
-		cfg |= 0x46b400;
-	else
-		cfg |= (frame->width * frame->height);
-
+	cfg |= (frame->width * frame->height);
 	writel(cfg, dev->regs + FIMC_REG_CITAREA);
 }
 
@@ -705,9 +667,8 @@ int fimc_hw_set_camera_type(struct fimc_dev *fimc,
 		FIMC_REG_CIGCTRL_SELCAM_MIPI | FIMC_REG_CIGCTRL_CAMIF_SELWB |
 		FIMC_REG_CIGCTRL_SELCAM_MIPI_A | FIMC_REG_CIGCTRL_CAM_JPEG);
 
-	if (cam->bus_type == FIMC_MIPI_CSI2) {
-	if(!fimc->vid_cap.use_isp)
-	{
+	switch (cam->bus_type) {
+	case FIMC_MIPI_CSI2:
 		cfg |= FIMC_REG_CIGCTRL_SELCAM_MIPI;
 
 		if (cam->mux_id == 0)
@@ -723,26 +684,24 @@ int fimc_hw_set_camera_type(struct fimc_dev *fimc,
 			cfg |= FIMC_REG_CIGCTRL_CAM_JPEG;
 			break;
 		default:
-			v4l2_err(fimc->vid_cap.vfd,
-				 "Not supported camera pixel format: %d",
+			v4l2_err(vid_cap->vfd,
+				 "Not supported camera pixel format: %#x\n",
 				 vid_cap->mf.code);
 			return -EINVAL;
 		}
 		tmp |= (csis_data_alignment == 32) << 8;
 
 		writel(tmp, fimc->regs + FIMC_REG_CSIIMGFMT);
-	    } else {
-                        cfg |= FIMC_REG_CIGCTRL_CAMIF_SELWB;
-                        cfg &= ~S5P_CIGCTRL_SELWRITEBACK_A;
-                }
-	} else if (cam->bus_type == FIMC_ITU_601 ||
-		   cam->bus_type == FIMC_ITU_656) {
+		break;
+	case FIMC_ITU_601...FIMC_ITU_656:
 		if (cam->mux_id == 0) /* ITU-A, ITU-B: 0, 1 */
 			cfg |= FIMC_REG_CIGCTRL_SELCAM_ITU_A;
-	} else if (cam->bus_type == FIMC_LCD_WB) {
+		break;
+	case FIMC_LCD_WB:
 		cfg |= FIMC_REG_CIGCTRL_CAMIF_SELWB;
-	} else {
-		err("invalid camera bus type selected\n");
+		break;
+	default:
+		v4l2_err(vid_cap->vfd, "Invalid camera bus type selected\n");
 		return -EINVAL;
 	}
 	writel(cfg, fimc->regs + FIMC_REG_CIGCTRL);
@@ -805,7 +764,6 @@ void fimc_activate_capture(struct fimc_ctx *ctx)
 {
 	fimc_hw_enable_scaler(ctx->fimc_dev, ctx->scaler.enabled);
 	fimc_hw_en_capture(ctx);
-	fimc_hwset_disable_frame_end_irq(ctx->fimc_dev);
 }
 
 void fimc_deactivate_capture(struct fimc_dev *fimc)
@@ -814,19 +772,4 @@ void fimc_deactivate_capture(struct fimc_dev *fimc)
 	fimc_hw_dis_capture(fimc);
 	fimc_hw_enable_scaler(fimc, false);
 	fimc_hw_en_lastirq(fimc, false);
-	fimc_hwset_enable_frame_end_irq(fimc);
-}
-
-void fimc_hwset_enable_frame_end_irq(struct fimc_dev *fimc)
-{
-	u32 cfg = readl(fimc->regs + FIMC_REG_CIGCTRL);
-	cfg |= FIMC_REG_CIGCTRL_IRQ_END_DISABLE;
-	writel(cfg, fimc->regs + FIMC_REG_CIGCTRL);
-}
-
-void fimc_hwset_disable_frame_end_irq(struct fimc_dev *fimc)
-{
-	u32 cfg = readl(fimc->regs + FIMC_REG_CIGCTRL);
-	cfg &= ~FIMC_REG_CIGCTRL_IRQ_END_DISABLE;
-	writel(cfg, fimc->regs + FIMC_REG_CIGCTRL);
 }

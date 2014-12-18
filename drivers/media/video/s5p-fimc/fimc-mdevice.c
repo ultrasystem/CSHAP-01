@@ -198,7 +198,7 @@ EXPORT_SYMBOL_GPL(fimc_pipeline_initialize);
  * sensor clock.
  * Called with the graph mutex held.
  */
-static int __fimc_pipeline_shutdown(struct fimc_pipeline *p)
+int __fimc_pipeline_shutdown(struct fimc_pipeline *p)
 {
 	int ret = 0;
 
@@ -1093,7 +1093,7 @@ static struct platform_driver fimc_md_driver = {
 	}
 };
 
-static int __init fimc_md_init(void)
+int __init fimc_md_init(void)
 {
 	int ret;
 
@@ -1114,8 +1114,7 @@ static int __init fimc_md_init(void)
 
 	return platform_driver_register(&fimc_md_driver);
 }
-
-static void __exit fimc_md_exit(void)
+void __exit fimc_md_exit(void)
 {
 	platform_driver_unregister(&fimc_md_driver);
 	fimc_unregister_driver();

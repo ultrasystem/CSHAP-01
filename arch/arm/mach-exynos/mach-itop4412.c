@@ -31,8 +31,8 @@
 #include <linux/gpio_event.h>
 #include <linux/platform_data/s3c-hsotg.h>
 #include <linux/platform_data/exynos_thermal.h>
-#include <linux/mfd/s5m87xx/s5m-pmic.h>
-#include <linux/mfd/s5m87xx/s5m-core.h>
+#include <linux/mfd/samsung/s5m8767.h>
+#include <linux/mfd/samsung/core.h>
 
 #include <asm/mach/arch.h>
 #include <asm/hardware/gic.h>
@@ -1370,7 +1370,7 @@ static struct regulator_init_data s5m8767_buck9_data = {
 #endif
 
 #if 0
-static struct s5m_regulator_data pegasus_regulators[] = {
+static struct sec_regulator_data pegasus_regulators[] = {
 	{ S5M8767_LDO8,  &s5m8767_ldo8_data},
 	{ S5M8767_LDO10, &s5m8767_ldo10_data},
 	{ S5M8767_LDO11, &s5m8767_ldo11_data},
@@ -1384,7 +1384,7 @@ static struct s5m_regulator_data pegasus_regulators[] = {
 	{ S5M8767_BUCK4, &s5m8767_buck4_data },
 };
 
-struct s5m_opmode_data s5m8767_opmode_data[S5M8767_REG_MAX] = {
+struct sec_opmode_data s5m8767_opmode_data[S5M8767_REG_MAX] = {
 	[S5M8767_BUCK1] = {S5M8767_BUCK1, S5M_OPMODE_SUSPEND},
 	[S5M8767_BUCK2] = {S5M8767_BUCK2, S5M_OPMODE_SUSPEND},
 	[S5M8767_BUCK3] = {S5M8767_BUCK3, S5M_OPMODE_SUSPEND},
@@ -1398,7 +1398,7 @@ struct s5m_opmode_data s5m8767_opmode_data[S5M8767_REG_MAX] = {
 	[S5M8767_LDO16] = {S5M8767_LDO16, S5M_OPMODE_SUSPEND},
 };
 #else
-static struct s5m_regulator_data pegasus_regulators[] = {
+static struct sec_regulator_data pegasus_regulators[] = {
 	{ S5M8767_BUCK1, &s5m8767_buck1_data },
 	{ S5M8767_BUCK2, &s5m8767_buck2_data },
 	{ S5M8767_BUCK3, &s5m8767_buck3_data },
@@ -1441,7 +1441,7 @@ static struct s5m_regulator_data pegasus_regulators[] = {
 	
 };
 
-static struct s5m_platform_data exynos4_s5m8767_pdata = {
+static struct sec_platform_data exynos4_s5m8767_pdata = {
 	.device_type		= S5M8767X,
 	.irq_base		= IRQ_BOARD_START,
 	.num_regulators		= ARRAY_SIZE(pegasus_regulators),
@@ -1487,7 +1487,7 @@ static struct s5m_platform_data exynos4_s5m8767_pdata = {
 };
 #endif
 #if 0
-static struct s5m_platform_data exynos4_s5m8767_pdata = {
+static struct sec_platform_data exynos4_s5m8767_pdata = {
 	.device_type            = S5M8767X,
 	.irq_base               = IRQ_BOARD_START,
 	.num_regulators         = ARRAY_SIZE(pegasus_regulators),
@@ -1657,7 +1657,7 @@ static struct ft5x0x_i2c_platform_data ft5x0x_pdata = {
 static struct i2c_board_info smdk4x12_i2c_devs1[] __initdata = {
 	{
 #ifdef CONFIG_REGULATOR_S5M8767
-		I2C_BOARD_INFO("s5m87xx", 0xCC >> 1),
+		I2C_BOARD_INFO("sec_pmic", 0xCC >> 1),
 		.platform_data = &exynos4_s5m8767_pdata,
 		.irq		= IRQ_EINT(15),
 
