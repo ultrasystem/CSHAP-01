@@ -187,6 +187,10 @@ config PM_SLEEP_DEBUG
 	def_bool y
 	depends on PM_DEBUG && PM_SLEEP
 
+config CAN_PM_TRACE
+        def_bool y
+        depends on PM_DEBUG && PM_SLEEP
+
 config PM_TRACE
 	bool
 	help
