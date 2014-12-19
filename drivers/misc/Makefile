@@ -54,6 +54,7 @@ obj-$(CONFIG_MAX8997_MUIC)	+= max8997-muic.o
 obj-$(CONFIG_WL127X_RFKILL)	+= wl127x-rfkill.o
 obj-$(CONFIG_SENSORS_AK8975)	+= akm8975.o
 obj-$(CONFIG_INTEL_MEI)		+= mei/
+obj-$(CONFIG_HWLAT_DETECTOR)  += hwlat_detector.o
 
 #add by cym 20140313
 #obj-$(CONFIG_INV_SENSORS)       += inv_mpu/

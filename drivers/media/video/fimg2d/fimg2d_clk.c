@@ -69,7 +69,8 @@ int fimg2d_clk_setup(struct fimg2d_control *ctrl)
 			ret = -ENOENT;
 			goto err_clk2;
 		}
-		fimg2d_info("sclk: %s\n", pdata->clkname);
+                fimg2d_info("sclk: %s, clkrate: %ld, to: %ld\n", pdata->clkname,
+                        clk_get_rate(sclk), pdata->clkrate);
 
 		if (clk_set_parent(sclk, parent))
 			fimg2d_err("failed to set parent\n");

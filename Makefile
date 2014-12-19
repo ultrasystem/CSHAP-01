@@ -195,9 +195,8 @@ export KBUILD_BUILDHOST := $(SUBARCH)
 #ARCH		?= $(SUBARCH)
 ARCH		?= arm
 
-#CROSS_COMPILE   ?= /home/cym/exynos4412/scp/scp/TC4_ICS/prebuilt/linux-x86/toolchain/arm-linux-androideabi-4.4.x/bin/arm-linux-androideabi-
-CROSS_COMPILE   ?= /home/cym/exynos4412/4.2/android4.2.2_JLB_PC4_CYIT/prebuilts/gcc/linux-x86/arm/arm-linux-androideabi-4.6/bin/arm-linux-androideabi-
-CROSS_COMPILE	?= $(CONFIG_CROSS_COMPILE:"%"=%)
+CROSS_COMPILE   ?= $(CONFIG_CROSS_COMPILE:"%"=%)
+CROSS_COMPILE   ?= /usr/tools/arm-linux-eabi/bin/arm-none-linux-gnueabi- 
 
 # Architecture as present in compile.h
 UTS_MACHINE 	:= $(ARCH)
