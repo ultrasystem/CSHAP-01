@@ -233,9 +233,9 @@ struct netdev_hw_addr {
 #define NETDEV_HW_ADDR_T_SLAVE		3
 #define NETDEV_HW_ADDR_T_UNICAST	4
 #define NETDEV_HW_ADDR_T_MULTICAST	5
-	bool			synced;
 	bool			global_use;
 	int			refcount;
+	int			synced;
 	struct rcu_head		rcu_head;
 };
 
@@ -1321,6 +1321,8 @@ struct net_device {
 #endif
 	/* phy device may attach itself for hardware timestamping */
 	struct phy_device *phydev;
+
+	struct lock_class_key *qdisc_tx_busylock;
 
 	/* group the device belongs to */
 	int group;
