@@ -73,21 +73,15 @@ struct cpufreq_cooling_device *notify_device;
  */
 static int get_idr(struct idr *idr, int *id)
 {
-	int err;
-again:
-	if (unlikely(idr_pre_get(idr, GFP_KERNEL) == 0))
-		return -ENOMEM;
+	int ret;
 
 	mutex_lock(&cooling_cpufreq_lock);
-	err = idr_get_new(idr, NULL, id);
+	ret = idr_alloc(idr, NULL, 0, 0, GFP_KERNEL);
 	mutex_unlock(&cooling_cpufreq_lock);
+	if (unlikely(ret < 0))
+		return ret;
+	*id = ret;
 
-	if (unlikely(err == -EAGAIN))
-		goto again;
-	else if (unlikely(err))
-		return err;
-
-	*id = *id & MAX_ID_MASK;
 	return 0;
 }
 
