@@ -1,8 +1,8 @@
 VERSION = 3
 PATCHLEVEL = 6
 SUBLEVEL = 11
-EXTRAVERSION = 9
-NAME = Saber-toothed Squirrel
+EXTRAVERSION = .9
+NAME = Liio Chen
 
 # *DOCUMENTATION*
 # To see a list of typical targets execute "make help"
