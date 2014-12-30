@@ -137,18 +137,23 @@ static int objmem_context_pid(struct objmem_data *omdata, pid_t pid)
     return -EIO;
 }
 
-static int objmem_context_create(struct objmem_data *omdata, void __user *arg)
+int objmem_context_create(struct objmem_data *omdata, void __user *arg, bool direct)
 {
     struct objmem_context *next, *context = omdata->context;
     struct objmem_create_data data;
 
     printk(KERN_INFO "objmem: create new context.\n");
 
-    if (unlikely(copy_from_user(&data, arg, sizeof(data)))) {
+    if(direct == false) {
+        if (unlikely(copy_from_user(&data, arg, sizeof(data)))) {
 
-        printk(KERN_ERR "objmem: can not copy user data.\n");
-        return -EFAULT;
+            printk(KERN_ERR "objmem: can not copy user data.\n");
+            return -EFAULT;
+        }
+    } else {
+        memcpy(&data, arg, sizeof(data));
     }
+
 
     printk(KERN_INFO "objmem: name: %s, size: %d\n", data.name, data.size);
 
@@ -340,7 +345,7 @@ static long objmem_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 
     switch (cmd) {
     case OBJMEM_IOCTL_CREATE:
-        ret = objmem_context_create(omdata, (void __user *) arg);
+        ret = objmem_context_create(omdata, (void __user *) arg, false);
         break;
     case OBJMEM_IOCTL_INTERVAL:
         ret = objmem_hrtimer_create(omdata, (unsigned long) arg);
@@ -421,6 +426,58 @@ static ssize_t objmem_read(struct file *file, char __user *buf,
     }
 
     return -EIO;
+}
+
+static ssize_t objmem_direct_write(struct file *file, const char *buf, size_t len)
+{
+    unsigned long flags = 0;
+    struct objmem_data *omdata = file->private_data;
+    struct objmem_context *context = omdata->context;
+
+    //printk(KERN_INFO "objmem: write file: %p, context: %p, buf: %p, size: %d.\n", file, context, buf, len);
+
+    if(context == NULL) {
+        printk(KERN_ERR "objmem: no context.\n");
+        return -EINVAL;
+    }
+
+    if(context->size == 0) {
+        printk(KERN_ERR "objmem: no allocate memory.\n");
+        return -ENOMEM;
+    }
+
+    if( (buf == NULL) ) {
+
+        printk(KERN_ERR "objmem: no buffers to write.\n");
+        return -EINVAL;
+    }
+
+    if(len != context->size) {
+
+        printk(KERN_ERR "objmem: request bytes invalid.\n");
+        return -ENOMEM;
+    }
+
+    if(context->buffer == NULL) {
+
+        mutex_lock(&objmem_mutex);
+        context->buffer = kmalloc(context->size, GFP_ATOMIC);
+        mutex_unlock(&objmem_mutex);
+
+        if(context->buffer == NULL) {
+
+            printk(KERN_ERR "objmem: no memory.\n");
+            return -ENOMEM;
+        }
+    }
+
+    spin_lock_irqsave(&context->lock, flags);
+    memcpy(context->buffer, buf, len);
+    spin_unlock_irqrestore(&context->lock, flags);
+
+    wake_up_all(&context->inq);
+    atomic64_inc(&context->update_count);
+    return len;
 }
 
 static ssize_t objmem_write(struct file *file, const char __user *buf,
@@ -518,6 +575,58 @@ static unsigned objmem_poll(struct file *file, struct poll_table_struct *wait)
 
     return mask;
 }
+
+OMHANDLE object_memory_create(const char *name, uint16_t size, bool exist_node)
+{
+    struct file *omnode = NULL;
+    struct objmem_create_data data;
+
+    if(name == NULL) {
+        return NULL;
+    }
+
+    strcpy(data.name, name);
+
+    if(!exist_node) {
+
+        if(size == 0) {
+            return NULL;
+        }
+
+        data.size = size;
+    }
+
+    omnode = filp_open(name, exist_node ? O_RDONLY : O_WRONLY, 0);
+    if(omnode == NULL) {
+        printk(KERN_ERR "objmem: cannot open node with %s\n", name);
+        return NULL;
+    }
+
+    if (objmem_context_create(omnode->private_data, &data, true)) {
+        filp_close(omnode, NULL);
+        return NULL;
+    }
+
+    return (OMHANDLE) omnode;
+}
+EXPORT_SYMBOL(object_memory_create);
+
+int object_memory_publish(const struct orb_metadata *meta, OMHANDLE handle, const void *data)
+{
+    if( objmem_direct_write(handle, data, meta->o_size) != (int) meta->o_size ) {
+        return -EINVAL;
+    }
+
+    return 0;
+}
+EXPORT_SYMBOL(object_memory_publish);
+
+void object_memory_close(OMHANDLE filp)
+{
+    if(filp)
+        filp_close( (struct file *) filp, NULL);
+}
+EXPORT_SYMBOL(object_memory_close);
 
 static struct file_operations objmem_fops = {
 	.owner = THIS_MODULE,

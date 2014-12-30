@@ -1,0 +1,21 @@
+menuconfig AUTOPILOT
+	tristate "Provides a framework for autopilot system"
+	help
+	  If you don't know what to do here, say N.
+
+if AUTOPILOT
+
+config OBJECT_MEMORY
+        tristate "Object memory for uORB module"
+        depends on ASHMEM
+        default y
+        ---help---
+         Create or Open the memory for uORB module
+
+config AUTOPILOT_ETSAIRSPEED
+	tristate "Eagle Tree Systems Airspeed MicroSensor V3"
+	depends on OBJECT_MEMORY
+	---help---
+          Driver for the Eagle Tree Airspeed V3 connected via I2C.
+
+endif

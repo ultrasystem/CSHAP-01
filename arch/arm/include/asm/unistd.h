@@ -405,6 +405,7 @@
 #define __NR_process_vm_readv		(__NR_SYSCALL_BASE+376)
 #define __NR_process_vm_writev		(__NR_SYSCALL_BASE+377)
 					/* 378 for kcmp */
+#include <linux/autopilot_sys.h>
 
 /*
  * The following SWIs are ARM private.

@@ -61,5 +61,3 @@ obj-$(CONFIG_HWLAT_DETECTOR)  += hwlat_detector.o
 #obj-$(CONFIG_INV_SENSORS_MPU6050) += mpu6050/
 obj-$(CONFIG_INV_SENSORS) += mpu6050/
 #endif
-
-obj-$(CONFIG_OBJECT_MEMORY)	+= objmem.o

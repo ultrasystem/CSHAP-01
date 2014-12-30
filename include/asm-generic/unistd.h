@@ -697,6 +697,10 @@ __SYSCALL(__NR_kcmp, sys_kcmp)
 #undef __NR_syscalls
 #define __NR_syscalls 273
 
+#ifdef CONFIG_AUTOPILOT
+#include <linux/autopilot_calls.h>
+#endif
+
 /*
  * All syscalls below here should go away really,
  * these are provided for both review and as a porting

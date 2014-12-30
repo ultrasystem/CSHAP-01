@@ -5,7 +5,14 @@
 #include <linux/ioctl.h>
 
 #define OBJMEM_NAME_LEN		256
+typedef void *              OMHANDLE;
 
+#if defined(CONFIG_OBJECT_MEMORY)
+#include <../../src/modules/uORB/uORB.h>
+OMHANDLE object_memory_create(const char *name, uint16_t size, bool exist_node);
+int object_memory_publish(const struct orb_metadata *meta, OMHANDLE handle, const void *data);
+void object_memory_close(OMHANDLE filp);
+#endif
 
 struct objmem_create_data {
     char    name[OBJMEM_NAME_LEN];

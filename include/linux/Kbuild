@@ -415,3 +415,7 @@ header-y += wireless.h
 header-y += x25.h
 header-y += xattr.h
 header-y += xfrm.h
+
+header-y += autopilot_sys.h
+header-y += autopilot_calls.h
+header-y += etsairspeed.h

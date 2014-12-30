@@ -11981,7 +11981,7 @@ Documentation/vDSO/parse_vdso.c
 Documentation/vDSO/vdso_test.c
 Documentation/watchdog/src/watchdog-simple.c
 Documentation/watchdog/src/watchdog-test.c
-drivers/autopilot/airspeed.c
+drivers/autopilot/etsairspeed.c
 firmware/ihex2fw.c
 fs/9p/acl.c
 fs/9p/acl.h
@@ -21619,3 +21619,12 @@ virt/kvm/iodev.h
 virt/kvm/iommu.c
 virt/kvm/irq_comm.c
 virt/kvm/kvm_main.c
+drivers/autopilot/objmem.c
+drivers/autopilot/Kconfig
+drivers/autopilot/Makefile
+drivers/autopilot/core.c
+include/linux/autopilot.h
+include/linux/etsairspeed.h
+include/linux/autopilot_calls.h
+include/linux/autopilot-subs.h
+include/linux/autopilot_sys.h

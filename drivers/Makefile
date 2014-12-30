@@ -141,4 +141,5 @@ obj-$(CONFIG_MEMORY)		+= memory/
 obj-$(CONFIG_IIO)		+= iio/
 obj-$(CONFIG_VME_BUS)		+= vme/
 
+obj-$(CONFIG_AUTOPILOT)		+= autopilot/
 obj-$(CONFIG_MTK_COMBO) += mtk_wcn_combo/
